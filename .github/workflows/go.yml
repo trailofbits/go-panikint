@@ -13,6 +13,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up Go (bootstrap)
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.5'
+
+    - name: Export GOROOT_BOOTSTRAP
+      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> $GITHUB_ENV
+
     - name: Build Go-Panikint (truncation disabled)
       run: |
         cd src
@@ -27,6 +35,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
+    - name: Set up Go (bootstrap)
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.5'
+
+    - name: Export GOROOT_BOOTSTRAP
+      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> $GITHUB_ENV
 
     - name: Build Go-Panikint (truncation enabled)
       run: |

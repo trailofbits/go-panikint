@@ -34,6 +34,30 @@ GOFLAGS="-gcflags=-truncationdetect=true" ./make.bash
 ./bin/go test -fuzz=FuzzIntegerOverflow -v
 ```
 
+> Bootstrap requirement
+>
+> Building the latest upstream Go requires a recent Go toolchain to bootstrap.
+> If `./make.bash` fails with an error like "building Go requires Go 1.24.6 or later",
+> install a newer Go (e.g. 1.25.5) and set `GOROOT_BOOTSTRAP`:
+>
+> macOS (arm64):
+> ```bash
+> curl -fsSL https://go.dev/dl/go1.25.5.darwin-arm64.tar.gz -o /tmp/go1.25.5.tar.gz
+> mkdir -p "$HOME/opt" && tar -C "$HOME/opt" -xzf /tmp/go1.25.5.tar.gz
+> mv "$HOME/opt/go" "$HOME/opt/go1.25.5"
+> export GOROOT_BOOTSTRAP="$HOME/opt/go1.25.5"
+> cd src && ./make.bash
+> ```
+>
+> Linux (x86_64):
+> ```bash
+> curl -fsSL https://go.dev/dl/go1.25.5.linux-amd64.tar.gz -o /tmp/go1.25.5.tar.gz
+> mkdir -p "$HOME/opt" && tar -C "$HOME/opt" -xzf /tmp/go1.25.5.tar.gz
+> mv "$HOME/opt/go" "$HOME/opt/go1.25.5"
+> export GOROOT_BOOTSTRAP="$HOME/opt/go1.25.5"
+> cd src && ./make.bash
+> ```
+
 ### How does it work ?
 #### What is being done exactly ?
 We basically patched the intermediate representation (IR) part of the Go compiler so that, on every math operands (i.e `OADD`, `OMUL`, `OSUB`, `ODIV`, ...) and type conversions, the compiler does not only add the IR opcodes that perform the operation but also **insert** a bunch of checks for arithmetic bugs and insert panic calls with detailed error messages. Panic messages include specific operation types (e.g., "integer overflow in int8 addition operation", "integer truncation: uint16 cannot fit in uint8"). This code will ultimately end up to the binary code (Assembly) of the application, so use with caution.
