@@ -294,36 +294,6 @@ func (from Int64x2) ToMask() (to Mask64x2) {
 	return from.NotEqual(Int64x2{})
 }
 
-// ToMask converts from Uint8x16 to Mask8x16, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint8x16) ToMask() (to Mask8x16) {
-	return from.NotEqual(Uint8x16{})
-}
-
-// ToMask converts from Uint16x8 to Mask16x8, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint16x8) ToMask() (to Mask16x8) {
-	return from.NotEqual(Uint16x8{})
-}
-
-// ToMask converts from Uint32x4 to Mask32x4, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint32x4) ToMask() (to Mask32x4) {
-	return from.NotEqual(Uint32x4{})
-}
-
-// ToMask converts from Uint64x2 to Mask64x2, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint64x2) ToMask() (to Mask64x2) {
-	return from.NotEqual(Uint64x2{})
-}
-
-// ToMask converts from Float32x4 to Mask32x4, mask element is set to true when the corresponding vector element is non-zero.
-func (from Float32x4) ToMask() (to Mask32x4) {
-	return from.NotEqual(Float32x4{})
-}
-
-// ToMask converts from Float64x2 to Mask64x2, mask element is set to true when the corresponding vector element is non-zero.
-func (from Float64x2) ToMask() (to Mask64x2) {
-	return from.NotEqual(Float64x2{})
-}
-
 // ToMask converts from Int8x32 to Mask8x32, mask element is set to true when the corresponding vector element is non-zero.
 func (from Int8x32) ToMask() (to Mask8x32) {
 	return from.NotEqual(Int8x32{})
@@ -342,36 +312,6 @@ func (from Int32x8) ToMask() (to Mask32x8) {
 // ToMask converts from Int64x4 to Mask64x4, mask element is set to true when the corresponding vector element is non-zero.
 func (from Int64x4) ToMask() (to Mask64x4) {
 	return from.NotEqual(Int64x4{})
-}
-
-// ToMask converts from Uint8x32 to Mask8x32, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint8x32) ToMask() (to Mask8x32) {
-	return from.NotEqual(Uint8x32{})
-}
-
-// ToMask converts from Uint16x16 to Mask16x16, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint16x16) ToMask() (to Mask16x16) {
-	return from.NotEqual(Uint16x16{})
-}
-
-// ToMask converts from Uint32x8 to Mask32x8, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint32x8) ToMask() (to Mask32x8) {
-	return from.NotEqual(Uint32x8{})
-}
-
-// ToMask converts from Uint64x4 to Mask64x4, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint64x4) ToMask() (to Mask64x4) {
-	return from.NotEqual(Uint64x4{})
-}
-
-// ToMask converts from Float32x8 to Mask32x8, mask element is set to true when the corresponding vector element is non-zero.
-func (from Float32x8) ToMask() (to Mask32x8) {
-	return from.NotEqual(Float32x8{})
-}
-
-// ToMask converts from Float64x4 to Mask64x4, mask element is set to true when the corresponding vector element is non-zero.
-func (from Float64x4) ToMask() (to Mask64x4) {
-	return from.NotEqual(Float64x4{})
 }
 
 // ToMask converts from Int8x64 to Mask8x64, mask element is set to true when the corresponding vector element is non-zero.
@@ -394,202 +334,172 @@ func (from Int64x8) ToMask() (to Mask64x8) {
 	return from.NotEqual(Int64x8{})
 }
 
-// ToMask converts from Uint8x64 to Mask8x64, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint8x64) ToMask() (to Mask8x64) {
-	return from.NotEqual(Uint8x64{})
-}
-
-// ToMask converts from Uint16x32 to Mask16x32, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint16x32) ToMask() (to Mask16x32) {
-	return from.NotEqual(Uint16x32{})
-}
-
-// ToMask converts from Uint32x16 to Mask32x16, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint32x16) ToMask() (to Mask32x16) {
-	return from.NotEqual(Uint32x16{})
-}
-
-// ToMask converts from Uint64x8 to Mask64x8, mask element is set to true when the corresponding vector element is non-zero.
-func (from Uint64x8) ToMask() (to Mask64x8) {
-	return from.NotEqual(Uint64x8{})
-}
-
-// ToMask converts from Float32x16 to Mask32x16, mask element is set to true when the corresponding vector element is non-zero.
-func (from Float32x16) ToMask() (to Mask32x16) {
-	return from.NotEqual(Float32x16{})
-}
-
-// ToMask converts from Float64x8 to Mask64x8, mask element is set to true when the corresponding vector element is non-zero.
-func (from Float64x8) ToMask() (to Mask64x8) {
-	return from.NotEqual(Float64x8{})
-}
-
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Int8x16) Not() Int8x16 {
-	return x.Xor(x.Equal(x).AsInt8x16())
+	return x.Xor(x.Equal(x).ToInt8x16())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Int16x8) Not() Int16x8 {
-	return x.Xor(x.Equal(x).AsInt16x8())
+	return x.Xor(x.Equal(x).ToInt16x8())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Int32x4) Not() Int32x4 {
-	return x.Xor(x.Equal(x).AsInt32x4())
+	return x.Xor(x.Equal(x).ToInt32x4())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Int64x2) Not() Int64x2 {
-	return x.Xor(x.Equal(x).AsInt64x2())
+	return x.Xor(x.Equal(x).ToInt64x2())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Int8x32) Not() Int8x32 {
-	return x.Xor(x.Equal(x).AsInt8x32())
+	return x.Xor(x.Equal(x).ToInt8x32())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Int16x16) Not() Int16x16 {
-	return x.Xor(x.Equal(x).AsInt16x16())
+	return x.Xor(x.Equal(x).ToInt16x16())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Int32x8) Not() Int32x8 {
-	return x.Xor(x.Equal(x).AsInt32x8())
+	return x.Xor(x.Equal(x).ToInt32x8())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Int64x4) Not() Int64x4 {
-	return x.Xor(x.Equal(x).AsInt64x4())
+	return x.Xor(x.Equal(x).ToInt64x4())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Int8x64) Not() Int8x64 {
-	return x.Xor(x.Equal(x).AsInt8x64())
+	return x.Xor(x.Equal(x).ToInt8x64())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Int16x32) Not() Int16x32 {
-	return x.Xor(x.Equal(x).AsInt16x32())
+	return x.Xor(x.Equal(x).ToInt16x32())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Int32x16) Not() Int32x16 {
-	return x.Xor(x.Equal(x).AsInt32x16())
+	return x.Xor(x.Equal(x).ToInt32x16())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Int64x8) Not() Int64x8 {
-	return x.Xor(x.Equal(x).AsInt64x8())
+	return x.Xor(x.Equal(x).ToInt64x8())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Uint8x16) Not() Uint8x16 {
-	return x.Xor(x.Equal(x).AsInt8x16().AsUint8x16())
+	return x.Xor(x.Equal(x).ToInt8x16().AsUint8x16())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Uint16x8) Not() Uint16x8 {
-	return x.Xor(x.Equal(x).AsInt16x8().AsUint16x8())
+	return x.Xor(x.Equal(x).ToInt16x8().AsUint16x8())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Uint32x4) Not() Uint32x4 {
-	return x.Xor(x.Equal(x).AsInt32x4().AsUint32x4())
+	return x.Xor(x.Equal(x).ToInt32x4().AsUint32x4())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX
 func (x Uint64x2) Not() Uint64x2 {
-	return x.Xor(x.Equal(x).AsInt64x2().AsUint64x2())
+	return x.Xor(x.Equal(x).ToInt64x2().AsUint64x2())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Uint8x32) Not() Uint8x32 {
-	return x.Xor(x.Equal(x).AsInt8x32().AsUint8x32())
+	return x.Xor(x.Equal(x).ToInt8x32().AsUint8x32())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Uint16x16) Not() Uint16x16 {
-	return x.Xor(x.Equal(x).AsInt16x16().AsUint16x16())
+	return x.Xor(x.Equal(x).ToInt16x16().AsUint16x16())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Uint32x8) Not() Uint32x8 {
-	return x.Xor(x.Equal(x).AsInt32x8().AsUint32x8())
+	return x.Xor(x.Equal(x).ToInt32x8().AsUint32x8())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX2
 func (x Uint64x4) Not() Uint64x4 {
-	return x.Xor(x.Equal(x).AsInt64x4().AsUint64x4())
+	return x.Xor(x.Equal(x).ToInt64x4().AsUint64x4())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Uint8x64) Not() Uint8x64 {
-	return x.Xor(x.Equal(x).AsInt8x64().AsUint8x64())
+	return x.Xor(x.Equal(x).ToInt8x64().AsUint8x64())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Uint16x32) Not() Uint16x32 {
-	return x.Xor(x.Equal(x).AsInt16x32().AsUint16x32())
+	return x.Xor(x.Equal(x).ToInt16x32().AsUint16x32())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Uint32x16) Not() Uint32x16 {
-	return x.Xor(x.Equal(x).AsInt32x16().AsUint32x16())
+	return x.Xor(x.Equal(x).ToInt32x16().AsUint32x16())
 }
 
 // Not returns the bitwise complement of x
 //
 // Emulated, CPU Feature AVX512
 func (x Uint64x8) Not() Uint64x8 {
-	return x.Xor(x.Equal(x).AsInt64x8().AsUint64x8())
+	return x.Xor(x.Equal(x).ToInt64x8().AsUint64x8())
 }
 
 // String returns a string representation of SIMD vector x
