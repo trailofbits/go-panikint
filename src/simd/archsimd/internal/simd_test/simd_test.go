@@ -1123,40 +1123,6 @@ func TestMaskedMerge(t *testing.T) {
 	}
 }
 
-func TestDotProductQuadruple(t *testing.T) {
-	if !archsimd.X86.AVXVNNI() {
-		t.Skip("Test requires X86.AVXVNNI, not available on this hardware")
-		return
-	}
-	xd := make([]int8, 16)
-	yd := make([]uint8, 16)
-	zd := make([]int32, 4)
-	wanted1 := make([]int32, 4)
-	wanted2 := make([]int32, 4)
-	res1 := make([]int32, 4)
-	res2 := make([]int32, 4)
-	for i := range 4 {
-		xd[i] = 5
-		yd[i] = 6
-		zd[i] = 3
-		wanted1[i] = 30
-		wanted2[i] = 30
-	}
-	x := archsimd.LoadInt8x16Slice(xd)
-	y := archsimd.LoadUint8x16Slice(yd)
-	z := archsimd.LoadInt32x4Slice(zd)
-	x.DotProductQuadruple(y).StoreSlice(res1)
-	x.DotProductQuadruple(y).Add(z).StoreSlice(res1)
-	for i := range 4 {
-		if res1[i] != wanted1[i] {
-			t.Errorf("got %d wanted %d", res1[i], wanted1[i])
-		}
-		if res2[i] != wanted2[i] {
-			t.Errorf("got %d wanted %d", res2[i], wanted2[i])
-		}
-	}
-}
-
 func TestPermuteScalars(t *testing.T) {
 	x := []int32{11, 12, 13, 14}
 	want := []int32{12, 13, 14, 11}
