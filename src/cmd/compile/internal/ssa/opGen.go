@@ -6158,6 +6158,12 @@ const (
 	OpCvtMask64x4to8
 	OpCvtMask64x8to8
 	OpIsZeroVec
+	OpIsNaNFloat32x4
+	OpIsNaNFloat32x8
+	OpIsNaNFloat32x16
+	OpIsNaNFloat64x2
+	OpIsNaNFloat64x4
+	OpIsNaNFloat64x8
 	OpAESDecryptLastRoundUint8x16
 	OpAESDecryptLastRoundUint8x32
 	OpAESDecryptLastRoundUint8x64
@@ -6202,19 +6208,19 @@ const (
 	OpAddInt64x4
 	OpAddInt64x8
 	OpAddPairsFloat32x4
-	OpAddPairsFloat32x8
 	OpAddPairsFloat64x2
-	OpAddPairsFloat64x4
+	OpAddPairsGroupedFloat32x8
+	OpAddPairsGroupedFloat64x4
+	OpAddPairsGroupedInt16x16
+	OpAddPairsGroupedInt32x8
+	OpAddPairsGroupedUint16x16
+	OpAddPairsGroupedUint32x8
 	OpAddPairsInt16x8
-	OpAddPairsInt16x16
 	OpAddPairsInt32x4
-	OpAddPairsInt32x8
+	OpAddPairsSaturatedGroupedInt16x16
 	OpAddPairsSaturatedInt16x8
-	OpAddPairsSaturatedInt16x16
 	OpAddPairsUint16x8
-	OpAddPairsUint16x16
 	OpAddPairsUint32x4
-	OpAddPairsUint32x8
 	OpAddSaturatedInt8x16
 	OpAddSaturatedInt8x32
 	OpAddSaturatedInt8x64
@@ -6518,26 +6524,26 @@ const (
 	OpExpandUint64x2
 	OpExpandUint64x4
 	OpExpandUint64x8
-	OpExtendLo2ToInt64x2Int8x16
-	OpExtendLo2ToInt64x2Int16x8
-	OpExtendLo2ToInt64x2Int32x4
-	OpExtendLo2ToUint64x2Uint8x16
-	OpExtendLo2ToUint64x2Uint16x8
-	OpExtendLo2ToUint64x2Uint32x4
-	OpExtendLo4ToInt32x4Int8x16
-	OpExtendLo4ToInt32x4Int16x8
-	OpExtendLo4ToInt64x4Int8x16
-	OpExtendLo4ToInt64x4Int16x8
-	OpExtendLo4ToUint32x4Uint8x16
-	OpExtendLo4ToUint32x4Uint16x8
-	OpExtendLo4ToUint64x4Uint8x16
-	OpExtendLo4ToUint64x4Uint16x8
-	OpExtendLo8ToInt16x8Int8x16
-	OpExtendLo8ToInt32x8Int8x16
-	OpExtendLo8ToInt64x8Int8x16
-	OpExtendLo8ToUint16x8Uint8x16
-	OpExtendLo8ToUint32x8Uint8x16
-	OpExtendLo8ToUint64x8Uint8x16
+	OpExtendLo2ToInt64Int8x16
+	OpExtendLo2ToInt64Int16x8
+	OpExtendLo2ToInt64Int32x4
+	OpExtendLo2ToUint64Uint8x16
+	OpExtendLo2ToUint64Uint16x8
+	OpExtendLo2ToUint64Uint32x4
+	OpExtendLo4ToInt32Int8x16
+	OpExtendLo4ToInt32Int16x8
+	OpExtendLo4ToInt64Int8x16
+	OpExtendLo4ToInt64Int16x8
+	OpExtendLo4ToUint32Uint8x16
+	OpExtendLo4ToUint32Uint16x8
+	OpExtendLo4ToUint64Uint8x16
+	OpExtendLo4ToUint64Uint16x8
+	OpExtendLo8ToInt16Int8x16
+	OpExtendLo8ToInt32Int8x16
+	OpExtendLo8ToInt64Int8x16
+	OpExtendLo8ToUint16Uint8x16
+	OpExtendLo8ToUint32Uint8x16
+	OpExtendLo8ToUint64Uint8x16
 	OpExtendToInt16Int8x16
 	OpExtendToInt16Int8x32
 	OpExtendToInt32Int8x16
@@ -6673,12 +6679,6 @@ const (
 	OpInterleaveLoUint16x8
 	OpInterleaveLoUint32x4
 	OpInterleaveLoUint64x2
-	OpIsNanFloat32x4
-	OpIsNanFloat32x8
-	OpIsNanFloat32x16
-	OpIsNanFloat64x2
-	OpIsNanFloat64x4
-	OpIsNanFloat64x8
 	OpLeadingZerosInt32x4
 	OpLeadingZerosInt32x8
 	OpLeadingZerosInt32x16
@@ -7190,19 +7190,19 @@ const (
 	OpSubInt64x4
 	OpSubInt64x8
 	OpSubPairsFloat32x4
-	OpSubPairsFloat32x8
 	OpSubPairsFloat64x2
-	OpSubPairsFloat64x4
+	OpSubPairsGroupedFloat32x8
+	OpSubPairsGroupedFloat64x4
+	OpSubPairsGroupedInt16x16
+	OpSubPairsGroupedInt32x8
+	OpSubPairsGroupedUint16x16
+	OpSubPairsGroupedUint32x8
 	OpSubPairsInt16x8
-	OpSubPairsInt16x16
 	OpSubPairsInt32x4
-	OpSubPairsInt32x8
+	OpSubPairsSaturatedGroupedInt16x16
 	OpSubPairsSaturatedInt16x8
-	OpSubPairsSaturatedInt16x16
 	OpSubPairsUint16x8
-	OpSubPairsUint16x16
 	OpSubPairsUint32x4
-	OpSubPairsUint32x8
 	OpSubSaturatedInt8x16
 	OpSubSaturatedInt8x32
 	OpSubSaturatedInt8x64
@@ -88994,6 +88994,36 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
+		name:    "IsNaNFloat32x4",
+		argLen:  1,
+		generic: true,
+	},
+	{
+		name:    "IsNaNFloat32x8",
+		argLen:  1,
+		generic: true,
+	},
+	{
+		name:    "IsNaNFloat32x16",
+		argLen:  1,
+		generic: true,
+	},
+	{
+		name:    "IsNaNFloat64x2",
+		argLen:  1,
+		generic: true,
+	},
+	{
+		name:    "IsNaNFloat64x4",
+		argLen:  1,
+		generic: true,
+	},
+	{
+		name:    "IsNaNFloat64x8",
+		argLen:  1,
+		generic: true,
+	},
+	{
 		name:    "AESDecryptLastRoundUint8x16",
 		argLen:  2,
 		generic: true,
@@ -89232,17 +89262,37 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "AddPairsFloat32x8",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "AddPairsFloat64x2",
 		argLen:  2,
 		generic: true,
 	},
 	{
-		name:    "AddPairsFloat64x4",
+		name:    "AddPairsGroupedFloat32x8",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "AddPairsGroupedFloat64x4",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "AddPairsGroupedInt16x16",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "AddPairsGroupedInt32x8",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "AddPairsGroupedUint16x16",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "AddPairsGroupedUint32x8",
 		argLen:  2,
 		generic: true,
 	},
@@ -89252,17 +89302,12 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "AddPairsInt16x16",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "AddPairsInt32x4",
 		argLen:  2,
 		generic: true,
 	},
 	{
-		name:    "AddPairsInt32x8",
+		name:    "AddPairsSaturatedGroupedInt16x16",
 		argLen:  2,
 		generic: true,
 	},
@@ -89272,27 +89317,12 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "AddPairsSaturatedInt16x16",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "AddPairsUint16x8",
 		argLen:  2,
 		generic: true,
 	},
 	{
-		name:    "AddPairsUint16x16",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "AddPairsUint32x4",
-		argLen:  2,
-		generic: true,
-	},
-	{
-		name:    "AddPairsUint32x8",
 		argLen:  2,
 		generic: true,
 	},
@@ -90896,102 +90926,102 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "ExtendLo2ToInt64x2Int8x16",
+		name:    "ExtendLo2ToInt64Int8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo2ToInt64x2Int16x8",
+		name:    "ExtendLo2ToInt64Int16x8",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo2ToInt64x2Int32x4",
+		name:    "ExtendLo2ToInt64Int32x4",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo2ToUint64x2Uint8x16",
+		name:    "ExtendLo2ToUint64Uint8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo2ToUint64x2Uint16x8",
+		name:    "ExtendLo2ToUint64Uint16x8",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo2ToUint64x2Uint32x4",
+		name:    "ExtendLo2ToUint64Uint32x4",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToInt32x4Int8x16",
+		name:    "ExtendLo4ToInt32Int8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToInt32x4Int16x8",
+		name:    "ExtendLo4ToInt32Int16x8",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToInt64x4Int8x16",
+		name:    "ExtendLo4ToInt64Int8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToInt64x4Int16x8",
+		name:    "ExtendLo4ToInt64Int16x8",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToUint32x4Uint8x16",
+		name:    "ExtendLo4ToUint32Uint8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToUint32x4Uint16x8",
+		name:    "ExtendLo4ToUint32Uint16x8",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToUint64x4Uint8x16",
+		name:    "ExtendLo4ToUint64Uint8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo4ToUint64x4Uint16x8",
+		name:    "ExtendLo4ToUint64Uint16x8",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo8ToInt16x8Int8x16",
+		name:    "ExtendLo8ToInt16Int8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo8ToInt32x8Int8x16",
+		name:    "ExtendLo8ToInt32Int8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo8ToInt64x8Int8x16",
+		name:    "ExtendLo8ToInt64Int8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo8ToUint16x8Uint8x16",
+		name:    "ExtendLo8ToUint16Uint8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo8ToUint32x8Uint8x16",
+		name:    "ExtendLo8ToUint32Uint8x16",
 		argLen:  1,
 		generic: true,
 	},
 	{
-		name:    "ExtendLo8ToUint64x8Uint8x16",
+		name:    "ExtendLo8ToUint64Uint8x16",
 		argLen:  1,
 		generic: true,
 	},
@@ -91669,42 +91699,6 @@ var opcodeTable = [...]opInfo{
 		name:    "InterleaveLoUint64x2",
 		argLen:  2,
 		generic: true,
-	},
-	{
-		name:        "IsNanFloat32x4",
-		argLen:      2,
-		commutative: true,
-		generic:     true,
-	},
-	{
-		name:        "IsNanFloat32x8",
-		argLen:      2,
-		commutative: true,
-		generic:     true,
-	},
-	{
-		name:        "IsNanFloat32x16",
-		argLen:      2,
-		commutative: true,
-		generic:     true,
-	},
-	{
-		name:        "IsNanFloat64x2",
-		argLen:      2,
-		commutative: true,
-		generic:     true,
-	},
-	{
-		name:        "IsNanFloat64x4",
-		argLen:      2,
-		commutative: true,
-		generic:     true,
-	},
-	{
-		name:        "IsNanFloat64x8",
-		argLen:      2,
-		commutative: true,
-		generic:     true,
 	},
 	{
 		name:    "LeadingZerosInt32x4",
@@ -94394,17 +94388,37 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "SubPairsFloat32x8",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "SubPairsFloat64x2",
 		argLen:  2,
 		generic: true,
 	},
 	{
-		name:    "SubPairsFloat64x4",
+		name:    "SubPairsGroupedFloat32x8",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "SubPairsGroupedFloat64x4",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "SubPairsGroupedInt16x16",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "SubPairsGroupedInt32x8",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "SubPairsGroupedUint16x16",
+		argLen:  2,
+		generic: true,
+	},
+	{
+		name:    "SubPairsGroupedUint32x8",
 		argLen:  2,
 		generic: true,
 	},
@@ -94414,17 +94428,12 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "SubPairsInt16x16",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "SubPairsInt32x4",
 		argLen:  2,
 		generic: true,
 	},
 	{
-		name:    "SubPairsInt32x8",
+		name:    "SubPairsSaturatedGroupedInt16x16",
 		argLen:  2,
 		generic: true,
 	},
@@ -94434,27 +94443,12 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "SubPairsSaturatedInt16x16",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "SubPairsUint16x8",
 		argLen:  2,
 		generic: true,
 	},
 	{
-		name:    "SubPairsUint16x16",
-		argLen:  2,
-		generic: true,
-	},
-	{
 		name:    "SubPairsUint32x4",
-		argLen:  2,
-		generic: true,
-	},
-	{
-		name:    "SubPairsUint32x8",
 		argLen:  2,
 		generic: true,
 	},
