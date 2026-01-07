@@ -2,6 +2,9 @@
 
 [![Go-panikint self-compile and test](https://github.com/trailofbits/go-panikint/actions/workflows/go.yml/badge.svg)](https://github.com/trailofbits/go-panikint/actions/workflows/go.yml)
 
+## NOTE
+**⚠️ Go-panikint is being integrated into cybergo. Cybergo is the Go compiler with a focus on security. It integrated features such as LibAFL (SOTA) fuzzing + native Go-panikint integration. If you're planning on using go-panikint, you should take a look at [cybergo](https://github.com/kevin-valerio/cybergo) first**
+
 ### Overview
 
 `Go-Panikint` is a modified version of the Go compiler that adds **automatic overflow/underflow detection** for integer arithmetic operations and **type truncation detection** for integer conversions. When overflow or truncation is detected, a **panic** with a detailed error message is triggered, including the specific operation type and integer types involved.
