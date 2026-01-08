@@ -6209,16 +6209,30 @@ func (s *state) intMul(n ir.Node, a, b *ssa.Value) *ssa.Value {
 	// Either operand is zero - no overflow possible
 	eitherZero := s.newValue2(ssa.OpOrB, types.Types[types.TBOOL], aIsZero, bIsZero)
 
-	// For non-zero operands, check if result/a == b
+	errorMsg := formatOverflowMessage(n.Op(), n.Type())
+
+	// Skip the division-based check when either operand is zero to avoid divide-by-zero traps.
+	b0 := s.endBlock()
+	b0.Kind = ssa.BlockIf
+	b0.SetControl(eitherZero)
+	bZero := s.f.NewBlock(ssa.BlockPlain)
+	bCheck := s.f.NewBlock(ssa.BlockPlain)
+	bAfter := s.f.NewBlock(ssa.BlockPlain)
+	b0.AddEdgeTo(bZero)
+	b0.AddEdgeTo(bCheck)
+
+	s.startBlock(bCheck)
+	// For non-zero operands, check if result/a == b.
 	quotientA := s.newValue2(s.ssaOp(ir.ODIV, n.Type()), a.Type, result, a)
 	quotientAEqB := s.newValue2(s.ssaOp(ir.OEQ, quotientA.Type), types.Types[types.TBOOL], quotientA, b)
+	// s.checkWithMessage() panics when condition is FALSE, so pass the valid condition.
+	s.checkWithMessage(quotientAEqB, ir.Syms.Panicoverflowdetailed, errorMsg)
+	s.endBlock().AddEdgeTo(bAfter)
 
-	// Valid multiplication: either operand is zero OR result/a == b
-	validMul := s.newValue2(ssa.OpOrB, types.Types[types.TBOOL], eitherZero, quotientAEqB)
+	s.startBlock(bZero)
+	s.endBlock().AddEdgeTo(bAfter)
 
-	// s.checkWithMessage() panics when condition is FALSE, so pass the valid condition
-	errorMsg := formatOverflowMessage(n.Op(), n.Type())
-	s.checkWithMessage(validMul, ir.Syms.Panicoverflowdetailed, errorMsg)
+	s.startBlock(bAfter)
 
 	return result
 }

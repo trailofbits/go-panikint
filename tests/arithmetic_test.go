@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"sync/atomic"
 	"testing"
 )
 
@@ -157,7 +158,6 @@ func TestUnsignedUint64Underflow(t *testing.T) {
 	var b uint64 = 1
 	_ = a - b
 }
-
 
 func TestSignedDivisionOverflow(t *testing.T) {
 	defer func() {
@@ -376,16 +376,32 @@ func TestSafeArithmetic(t *testing.T) {
 
 // Suppression directive tests for overflow/underflow
 func TestOverflowSuppression_LineAbove(t *testing.T) {
-    // Expect no panic due to suppression marker on previous line
-    var a int8 = 120
-    var b int8 = 10
-    // overflow_false_positive
-    _ = a + b
+	// Expect no panic due to suppression marker on previous line
+	var a int8 = 120
+	var b int8 = 10
+	// overflow_false_positive
+	_ = a + b
 }
 
 func TestOverflowSuppression_SameLine(t *testing.T) {
-    // Expect no panic due to suppression marker on same line
-    var a int8 = 120
-    var b int8 = 10
-    _ = a + b // overflow_false_positive
+	// Expect no panic due to suppression marker on same line
+	var a int8 = 120
+	var b int8 = 10
+	_ = a + b // overflow_false_positive
+}
+
+var g int32
+var sink []uint64
+
+//go:noinline
+func doCopyAppend(n int) {
+	dst := make([]uint64, n)
+	src := make([]uint64, n)
+	copy(dst, src)
+	sink = append(dst, src...)
+}
+
+func TestSliceCopyBug(t *testing.T) {
+	n := int(atomic.LoadInt32(&g))
+	doCopyAppend(n)
 }
