@@ -1,8 +1,9 @@
 ## Go-Panikint
 
+## Note
+**⚠️ Go-panikint is being integrated into cybergo, the Go compiler with a focus on security. It integrates features such as LibAFL fuzzing and go-panikint. If you're planning on using go-panikint, you should take a look at [cybergo](https://github.com/kevin-valerio/cybergo) first.**
 
-## NOTE
-**⚠️ Go-panikint is being integrated into cybergo. Cybergo is the Go compiler with a focus on security. It integrated features such as LibAFL (SOTA) fuzzing + native Go-panikint integration. If you're planning on using go-panikint, you should take a look at [cybergo](https://github.com/kevin-valerio/cybergo) first**
+--------
 
 [![Go-panikint self-compile and test](https://github.com/trailofbits/go-panikint/actions/workflows/go.yml/badge.svg)](https://github.com/trailofbits/go-panikint/actions/workflows/go.yml)
 
