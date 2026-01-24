@@ -1,7 +1,7 @@
 ## Go-Panikint
 
 ## Note
-**⚠️ Go-panikint is being integrated into cybergo, the Go compiler with a focus on security. It integrates features such as LibAFL fuzzing and go-panikint. If you're planning on using go-panikint, you should take a look at [cybergo](https://github.com/kevin-valerio/cybergo) first.**
+**⚠️ go-panikint is being integrated into gosentry, the Go tooling with a focus on security. It integrates features such as LibAFL fuzzing, go-panikint, and more. If you're planning on using go-panikint, you should take a look at [gosentry](https://github.com/kevin-valerio/gosentry) first.**
 
 --------
 
