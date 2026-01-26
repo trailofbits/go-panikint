@@ -55,6 +55,17 @@ func TestConstantMultiplies(t *testing.T) {
 			}
 		}
 	}
+	fmt.Fprintf(&code, "func didPanic[T any](f func() T) (r T, panicked bool) {\n")
+	fmt.Fprintf(&code, "    defer func() {\n")
+	fmt.Fprintf(&code, "        if recover() != nil {\n")
+	fmt.Fprintf(&code, "            panicked = true\n")
+	fmt.Fprintf(&code, "            var zero T\n")
+	fmt.Fprintf(&code, "            r = zero\n")
+	fmt.Fprintf(&code, "        }\n")
+	fmt.Fprintf(&code, "    }()\n")
+	fmt.Fprintf(&code, "    r = f()\n")
+	fmt.Fprintf(&code, "    return\n")
+	fmt.Fprintf(&code, "}\n")
 	fmt.Fprintf(&code, "func main() {\n")
 	for _, b := range widths {
 		for _, s := range signs {
@@ -66,7 +77,9 @@ func TestConstantMultiplies(t *testing.T) {
 			fmt.Fprintf(&code, "    for _, tst := range test_%s%ds {\n", s, b)
 			fmt.Fprintf(&code, "        for x := %d; x <= %d; x++ {\n", lo, hi)
 			fmt.Fprintf(&code, "            y := %sint%d(x)\n", s, b)
-			fmt.Fprintf(&code, "            if tst.f(y) != y*tst.m {\n")
+			fmt.Fprintf(&code, "            got, panGot := didPanic(func() %sint%d { return tst.f(y) })\n", s, b)
+			fmt.Fprintf(&code, "            want, panWant := didPanic(func() %sint%d { return y*tst.m })\n", s, b)
+			fmt.Fprintf(&code, "            if panGot != panWant || (!panGot && got != want) {\n")
 			fmt.Fprintf(&code, "                panic(tst.m)\n")
 			fmt.Fprintf(&code, "            }\n")
 			fmt.Fprintf(&code, "        }\n")

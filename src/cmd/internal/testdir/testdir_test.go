@@ -75,6 +75,8 @@ var (
 // Each .go file test case in GOROOT/test is registered as a subtest with
 // a full name like "Test/fixedbugs/bug000.go" ('/'-separated relative path).
 func Test(t *testing.T) {
+	t.Setenv("GOPANIKINT_DISABLE_OVERFLOW", "1")
+
 	if *target != "" {
 		// When -target is set, propagate it to GOOS/GOARCH in our environment
 		// so that all commands run with the target GOOS/GOARCH.

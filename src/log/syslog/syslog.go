@@ -124,6 +124,7 @@ func Dial(network, raddr string, priority Priority, tag string) (*Writer, error)
 		tag = os.Args[0]
 	}
 	hostname, _ := os.Hostname()
+	hostname = sanitizeHostname(hostname)
 
 	w := &Writer{
 		priority: priority,
@@ -315,4 +316,19 @@ func NewLogger(p Priority, logFlag int) (*log.Logger, error) {
 		return nil, err
 	}
 	return log.New(s, "", logFlag), nil
+}
+
+func sanitizeHostname(hostname string) string {
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" {
+		return ""
+	}
+	return strings.Map(func(r rune) rune {
+		// The syslog hostname field is space-delimited. Keep it a single token.
+		// RFC 5424 allows only printable US-ASCII excluding space.
+		if r <= ' ' || r == 0x7f || r > 0x7e {
+			return '-'
+		}
+		return r
+	}, hostname)
 }

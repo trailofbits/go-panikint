@@ -5661,8 +5661,8 @@ func (s *state) intDivide(n ir.Node, a, b *ssa.Value) *ssa.Value {
 	}
 	if needcheck {
 		// do a size-appropriate check for zero
-		// cmp := s.newValue2(s.ssaOp(ir.ONE, n.Type()), types.Types[types.TBOOL], b, s.zeroVal(n.Type()))
-		// s.check(cmp, ir.Syms.Panicdivide) // temporarily commented out
+		cmp := s.newValue2(s.ssaOp(ir.ONE, n.Type()), types.Types[types.TBOOL], b, s.zeroVal(n.Type()))
+		s.check(cmp, ir.Syms.Panicdivide)
 	}
 
 	return s.newValue2(s.ssaOp(n.Op(), n.Type()), a.Type, a, b)
@@ -5702,6 +5702,10 @@ func isStandardLibraryFile(filename string) bool {
 	if buildcfg.GOROOT != "" {
 		gorootSrc := filepath.Join(buildcfg.GOROOT, "src")
 		if strings.HasPrefix(filename, gorootSrc) {
+			return true
+		}
+		gorootTest := filepath.Join(buildcfg.GOROOT, "test")
+		if strings.HasPrefix(filename, gorootTest) {
 			return true
 		}
 	}
@@ -5834,6 +5838,9 @@ func hasTruncationSuppression(pos src.XPos) bool {
 // shouldCheckOverflow returns true if overflow detection should be applied for this operation.
 // It checks if the package should be excluded from overflow detection and if the type is supported.
 func (s *state) shouldCheckOverflow(typ *types.Type) bool {
+	if os.Getenv("GOPANIKINT_DISABLE_OVERFLOW") != "" {
+		return false
+	}
 
 	// Apply overflow detection based on source location, not compilation context
 	// The key insight is that when user code calls library functions, those functions

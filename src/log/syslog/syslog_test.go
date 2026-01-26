@@ -272,6 +272,7 @@ func check(t *testing.T, in, out, transport string) {
 		t.Errorf("Error retrieving hostname: %v", err)
 		return
 	}
+	hostname = sanitizeHostname(hostname)
 
 	if transport == "unixgram" || transport == "unix" {
 		var month, date, ts string
@@ -315,6 +316,7 @@ func TestWrite(t *testing.T) {
 	if hostname, err := os.Hostname(); err != nil {
 		t.Fatalf("Error retrieving hostname")
 	} else {
+		hostname = sanitizeHostname(hostname)
 		for _, test := range tests {
 			done := make(chan string)
 			addr, sock, srvWG := startServer(t, "udp", "", done)

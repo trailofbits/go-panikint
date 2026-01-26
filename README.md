@@ -118,6 +118,9 @@ cd tests/;
 GOROOT=/path/to/go-panikint /path/to/go-panikint/bin/go test -v .
 ```
 
+Note: the upstream Go distribution tests in `$GOROOT/test` intentionally rely on integer wrap-around.
+When running `cmd/internal/testdir` (for example via `src/all.bash`), we disable overflow instrumentation using `GOPANIKINT_DISABLE_OVERFLOW=1`.
+
 ### Examples
 
 #### Example 1 (Signed Integer Overflow):
