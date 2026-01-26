@@ -5698,13 +5698,18 @@ func isStandardLibraryFile(filename string) bool {
 		return false
 	}
 
+	filename = filepath.Clean(filename)
+
 	// Check if file is from GOROOT (standard library)
 	if buildcfg.GOROOT != "" {
-		gorootSrc := filepath.Join(buildcfg.GOROOT, "src")
+		sep := string(filepath.Separator)
+
+		gorootSrc := filepath.Join(buildcfg.GOROOT, "src") + sep
 		if strings.HasPrefix(filename, gorootSrc) {
 			return true
 		}
-		gorootTest := filepath.Join(buildcfg.GOROOT, "test")
+
+		gorootTest := filepath.Join(buildcfg.GOROOT, "test") + sep
 		if strings.HasPrefix(filename, gorootTest) {
 			return true
 		}
