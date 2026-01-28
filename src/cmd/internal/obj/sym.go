@@ -348,8 +348,34 @@ func (ctxt *Link) NumberSyms() {
 		}
 		pkg := rs.Pkg
 		if rs.ContentAddressable() {
-			// for now, only support content-addressable symbols that are always locally defined.
-			panic("hashed refs unsupported for now")
+			// Content-addressable symbols must be locally defined. If a ref shows up
+			// without being indexed, treat it as a local definition so it can be
+			// emitted in this object (hashed refs are still unsupported).
+			if rs.Pkg != "" && rs.Pkg != "\"\"" && rs.Pkg != ctxt.Pkgpath {
+				panic("hashed refs unsupported for now")
+			}
+			if rs.Indexed() {
+				return
+			}
+			if rs.Size <= 8 && len(rs.R) == 0 && contentHashSection(rs) == 0 {
+				rs.PkgIdx = goobj.PkgIdxHashed64
+				rs.SymIdx = hashed64idx
+				if hashed64idx != int32(len(ctxt.hashed64defs)) {
+					panic("bad index")
+				}
+				ctxt.hashed64defs = append(ctxt.hashed64defs, rs)
+				hashed64idx++
+			} else {
+				rs.PkgIdx = goobj.PkgIdxHashed
+				rs.SymIdx = hashedidx
+				if hashedidx != int32(len(ctxt.hasheddefs)) {
+					panic("bad index")
+				}
+				ctxt.hasheddefs = append(ctxt.hasheddefs, rs)
+				hashedidx++
+			}
+			rs.Set(AttrIndexed, true)
+			return
 		}
 		if pkg == "" || pkg == "\"\"" || pkg == "_" || !rs.Indexed() {
 			rs.PkgIdx = goobj.PkgIdxNone
