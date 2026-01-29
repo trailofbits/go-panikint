@@ -12,7 +12,6 @@ import (
 // Syms holds known symbols.
 var Syms symsStruct
 
-
 type symsStruct struct {
 	AssertE2I                 *obj.LSym
 	AssertE2I2                *obj.LSym
@@ -56,22 +55,22 @@ type symsStruct struct {
 	PanicdottypeE             *obj.LSym
 	PanicdottypeI             *obj.LSym
 	Panicnildottype           *obj.LSym
-    Panicoverflow             *obj.LSym
-    // Fork-specific detailed panic symbols retained.
-    Panicoverflowdetailed     *obj.LSym
-    Panictruncate             *obj.LSym
-    Panictruncatedetailed     *obj.LSym
-    // Upstream symbol for SIMD immediate validation
-    PanicSimdImm              *obj.LSym
-	Racefuncenter             *obj.LSym
-	Racefuncexit              *obj.LSym
-	Raceread                  *obj.LSym
-	Racereadrange             *obj.LSym
-	Racewrite                 *obj.LSym
-	Racewriterange            *obj.LSym
-	TypeAssert                *obj.LSym
-	WBZero                    *obj.LSym
-	WBMove                    *obj.LSym
+	Panicoverflow             *obj.LSym
+	// Fork-specific detailed panic symbols retained.
+	Panicoverflowdetailed *obj.LSym
+	Panictruncate         *obj.LSym
+	Panictruncatedetailed *obj.LSym
+	// Upstream symbol for SIMD immediate validation
+	PanicSimdImm   *obj.LSym
+	Racefuncenter  *obj.LSym
+	Racefuncexit   *obj.LSym
+	Raceread       *obj.LSym
+	Racereadrange  *obj.LSym
+	Racewrite      *obj.LSym
+	Racewriterange *obj.LSym
+	TypeAssert     *obj.LSym
+	WBZero         *obj.LSym
+	WBMove         *obj.LSym
 	// Wasm
 	SigPanic         *obj.LSym
 	Staticuint64s    *obj.LSym

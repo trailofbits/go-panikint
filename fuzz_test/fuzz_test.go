@@ -1,4 +1,5 @@
 package fuzztest
+
 import "testing"
 
 func FuzzAdd(f *testing.F) {
