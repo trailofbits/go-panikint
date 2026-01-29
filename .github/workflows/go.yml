@@ -2,16 +2,13 @@ name: Go-panikint self-compile and test
 
 on:
   push:
-    branches: [ "master" ]
   pull_request:
-    branches: [ "master" ]
 
 permissions: {}
 
 jobs:
 
   workflow-lint:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -31,7 +28,6 @@ jobs:
         advanced-security: false
 
   lint-and-types:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
