@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt
+        language: system
+        types: [go]
+        args: [-w]
+        exclude: '(^test/|/testdata/)'
