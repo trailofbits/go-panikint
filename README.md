@@ -119,8 +119,8 @@ GOROOT=/path/to/go-panikint /path/to/go-panikint/bin/go test -v .
 ```
 
 CI notes:
-- Pull requests run workflow linting (actionlint + zizmor), `go vet`, and type checking (`go test -run=^$`) in `tests/` using the built toolchain.
-- Pushes to `master` run the build + tests (both truncation disabled/enabled).
+- Pull requests and pushes run workflow linting (actionlint + zizmor), `go vet`, and type checking (`go test -run=^$`) in `tests/` using the built toolchain.
+- Pull requests and pushes run the build + tests (both truncation disabled/enabled).
 - The compiler may generate many identical panic message strings; string symbol emission is serialized to avoid rare `go:string."..." redeclared` build failures.
 
 Note: the upstream Go distribution tests in `$GOROOT/test` intentionally rely on integer wrap-around.
