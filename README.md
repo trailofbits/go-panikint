@@ -118,9 +118,22 @@ cd tests/;
 GOROOT=/path/to/go-panikint /path/to/go-panikint/bin/go test -v .
 ```
 
+CI notes:
+- Pull requests run workflow linting (actionlint + zizmor), `go vet`, and type checking (`go test -run=^$`) in `tests/` using the built toolchain.
+- Pushes to `master` run the build + tests (both truncation disabled/enabled).
+
 Note: the upstream Go distribution tests in `$GOROOT/test` intentionally rely on integer wrap-around.
 The go-panikint unit tests live in `$GOROOT/tests` (plural) and should run with overflow checks enabled.
 When running `cmd/internal/testdir` (for example via `src/all.bash`), we disable overflow instrumentation using `GOPANIKINT_DISABLE_OVERFLOW=1`.
+
+### Pre-commit (gofmt)
+
+If you use `pre-commit` or `prek`, this repo includes a minimal `.pre-commit-config.yaml` that runs `gofmt` on staged Go files. The hook skips `test/` and any `testdata/` paths because those fixtures are intentionally not gofmt'ed in the Go repo.
+
+Example:
+```bash
+prek run --all-files
+```
 
 ### Examples
 
