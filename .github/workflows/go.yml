@@ -45,7 +45,7 @@ jobs:
         cache-dependency-path: tests/go.mod
 
     - name: Export GOROOT_BOOTSTRAP
-      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> $GITHUB_ENV
+      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> "$GITHUB_ENV"
 
     - name: Build Go-Panikint (truncation disabled)
       run: |
@@ -80,7 +80,7 @@ jobs:
         cache-dependency-path: tests/go.mod
 
     - name: Export GOROOT_BOOTSTRAP
-      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> $GITHUB_ENV
+      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> "$GITHUB_ENV"
 
     - name: Build Go-Panikint (truncation disabled)
       run: |
@@ -110,7 +110,7 @@ jobs:
         cache-dependency-path: tests/go.mod
 
     - name: Export GOROOT_BOOTSTRAP
-      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> $GITHUB_ENV
+      run: echo "GOROOT_BOOTSTRAP=$(go env GOROOT)" >> "$GITHUB_ENV"
 
     - name: Build Go-Panikint (truncation enabled)
       run: |
