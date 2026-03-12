@@ -2570,7 +2570,7 @@ func swapbound(v []int) {
 	for i := 0; i < len(v)/2; i++ { // ERROR "Proved Div64 is unsigned|Induction variable"
 		v[i], // ERROR "Proved IsInBounds"
 			v[len(v)-1-i] = // ERROR "Proved IsInBounds"
-			v[len(v)-1-i],  // ERROR "Proved IsInBounds"
+			v[len(v)-1-i], // ERROR "Proved IsInBounds"
 			v[i] // ERROR "Proved IsInBounds"
 	}
 }
@@ -2750,6 +2750,22 @@ func issue76429(s []byte, k int) byte {
 	}
 	s = s[k:]   // ERROR "Proved IsSliceInBounds" "Proved slicemask not needed"
 	return s[0] // ERROR "Proved IsInBounds"
+}
+
+func booleanLikeNeqWithOneToEqWithZero(x uint64) uint64 {
+	x = min(x, 1)
+	if x != 1 { // ERROR "argument is boolean-like; rewrote to Eq64 against 0$"
+		return 42
+	}
+	return 1337
+}
+
+func booleanLikeEqWithOneToNeqWithZero(x uint64) uint64 {
+	x = min(x, 1)
+	if x == 1 { // ERROR "argument is boolean-like; rewrote to Neq64 against 0$"
+		return 42
+	}
+	return 1337
 }
 
 //go:noinline

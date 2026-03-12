@@ -281,10 +281,11 @@ func init() {
 		{name: "LoweredRound64F", argLength: 1, reg: fp11, resultInArg0: true},
 
 		// Calls
-		{name: "CALLstatic", argLength: -1, reg: call, aux: "CallOff", call: true},               // call static function aux.(*gc.Sym). last arg=mem, auxint=argsize, returns mem
-		{name: "CALLtail", argLength: -1, reg: call, aux: "CallOff", call: true, tailCall: true}, // tail call static function aux.(*gc.Sym). last arg=mem, auxint=argsize, returns mem
-		{name: "CALLclosure", argLength: -1, reg: callClosure, aux: "CallOff", call: true},       // call function via closure. arg0=codeptr, arg1=closure, last arg=mem, auxint=argsize, returns mem
-		{name: "CALLinter", argLength: -1, reg: callInter, aux: "CallOff", call: true},           // call fn by pointer. arg0=codeptr, last arg=mem, auxint=argsize, returns mem
+		{name: "CALLstatic", argLength: -1, reg: call, aux: "CallOff", call: true},                         // call static function aux.(*gc.Sym). last arg=mem, auxint=argsize, returns mem
+		{name: "CALLtail", argLength: -1, reg: call, aux: "CallOff", call: true, tailCall: true},           // tail call static function aux.(*gc.Sym). last arg=mem, auxint=argsize, returns mem
+		{name: "CALLtailinter", argLength: -1, reg: callInter, aux: "CallOff", call: true, tailCall: true}, // tail call fn by pointer. arg0=codeptr, last arg=mem, auxint=argsize, returns mem
+		{name: "CALLclosure", argLength: -1, reg: callClosure, aux: "CallOff", call: true},                 // call function via closure. arg0=codeptr, arg1=closure, last arg=mem, auxint=argsize, returns mem
+		{name: "CALLinter", argLength: -1, reg: callInter, aux: "CallOff", call: true},                     // call fn by pointer. arg0=codeptr, last arg=mem, auxint=argsize, returns mem
 
 		// Generic moves and zeros
 
@@ -528,6 +529,10 @@ func init() {
 		//   ====+=============================
 		{name: "FCLASSS", argLength: 1, reg: fpgp, asm: "FCLASSS", typ: "Int64"}, // classify float32
 		{name: "FCLASSD", argLength: 1, reg: fpgp, asm: "FCLASSD", typ: "Int64"}, // classify float64
+
+		// RISC-V Integer Conditional (Zicond) operations extension
+		{name: "CZEROEQZ", argLength: 2, reg: gp21, asm: "CZEROEQZ"}, // arg1 == 0 result is 0, else arg0
+		{name: "CZERONEZ", argLength: 2, reg: gp21, asm: "CZERONEZ"}, // arg1 != 0 result is 0, else arg0
 	}
 
 	RISCV64blocks := []blockData{
