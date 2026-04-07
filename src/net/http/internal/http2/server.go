@@ -295,6 +295,8 @@ type ServeConnOpts struct {
 	// in an h2c upgrade request.
 	Settings []byte
 
+	UpgradeRequest *ServerRequest
+
 	// SawClientPreface is set if the HTTP/2 connection preface
 	// has already been read from the connection.
 	SawClientPreface bool
@@ -480,6 +482,11 @@ func (s *Server) serveConn(c net.Conn, opts *ServeConnOpts, newf func(*serverCon
 			return
 		}
 		opts.Settings = nil
+	}
+
+	if opts.UpgradeRequest != nil {
+		sc.upgradeRequest(opts.UpgradeRequest)
+		opts.UpgradeRequest = nil
 	}
 
 	sc.serve(conf)
@@ -893,8 +900,8 @@ func (sc *serverConn) serve(conf Config) {
 	sc.setConnState(ConnStateActive)
 	sc.setConnState(ConnStateIdle)
 
-	if sc.srv.IdleTimeout > 0 {
-		sc.idleTimer = time.AfterFunc(sc.srv.IdleTimeout, sc.onIdleTimer)
+	if idle := sc.hs.IdleTimeout(); idle > 0 {
+		sc.idleTimer = time.AfterFunc(idle, sc.onIdleTimer)
 		defer sc.idleTimer.Stop()
 	}
 
@@ -1659,8 +1666,9 @@ func (sc *serverConn) closeStream(st *stream, err error) {
 	delete(sc.streams, st.id)
 	if len(sc.streams) == 0 {
 		sc.setConnState(ConnStateIdle)
-		if sc.srv.IdleTimeout > 0 && sc.idleTimer != nil {
-			sc.idleTimer.Reset(sc.srv.IdleTimeout)
+		idleTimeout := sc.hs.IdleTimeout()
+		if idleTimeout > 0 && sc.idleTimer != nil {
+			sc.idleTimer.Reset(idleTimeout)
 		}
 		if h1ServerKeepAlivesDisabled(sc.hs) {
 			sc.startGracefulShutdownInternal()
@@ -2073,6 +2081,32 @@ func (sc *serverConn) processHeaders(f *MetaHeadersFrame) error {
 	}
 
 	return sc.scheduleHandler(id, rw, req, handler)
+}
+
+func (sc *serverConn) upgradeRequest(req *ServerRequest) {
+	sc.serveG.check()
+	id := uint32(1)
+	sc.maxClientStreamID = id
+	st := sc.newStream(id, 0, stateHalfClosedRemote, defaultRFC9218Priority(sc.priorityAware && !sc.hasIntermediary))
+	st.reqTrailer = req.Trailer
+	if st.reqTrailer != nil {
+		st.trailer = make(Header)
+	}
+	rw := sc.newResponseWriter(st)
+	rw.rws.req = *req
+	req = &rw.rws.req
+
+	// Disable any read deadline set by the net/http package
+	// prior to the upgrade.
+	if sc.hs.ReadTimeout() > 0 {
+		sc.conn.SetReadDeadline(time.Time{})
+	}
+
+	// This is the first request on the connection,
+	// so start the handler directly rather than going
+	// through scheduleHandler.
+	sc.curHandlers++
+	go sc.runHandler(rw, req, sc.handler.ServeHTTP)
 }
 
 func (st *stream) processTrailerHeaders(f *MetaHeadersFrame) error {
