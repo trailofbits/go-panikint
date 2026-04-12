@@ -87,7 +87,7 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 			}
 		}
 		return value, known
-	case OpCopy:
+	case OpCopy, OpCvtBoolToUint8:
 		return kb.fold(v.Args[0])
 	case OpEq64, OpEq32, OpEq16, OpEq8, OpEqB:
 		x, xk := kb.fold(v.Args[0])

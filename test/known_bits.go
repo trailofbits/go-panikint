@@ -181,3 +181,36 @@ func unknownBitsZeroExt(x uint16) uint32 {
 	x |= 0xAAAA
 	return uint32(x) & 0xFFFFF000
 }
+
+func cvtBoolToUint8(cond bool) (r uint8) {
+	if cond {
+		r = 1
+	}
+	return r
+}
+
+func knownBitsCvtBoolToUint8False(x, y uint64) uint8 {
+	x |= 1
+	y &^= 1
+	bool := x == y                  // ERROR "known value of v[0-9]+ \(Eq64\): false$"
+	return cvtBoolToUint8(bool) & 1 // ERROR "known value of v[0-9]+ \(CvtBoolToUint8\): 0$"
+}
+
+func knownBitsCvtBoolToUint8True(x int64, cond bool) uint8 {
+	x |= 6
+	if cond {
+		x |= 1
+		x |= 4
+	}
+	// I would expect "known value of v[0-9]+ \(And64\): 6$" to be required, but somehow it's not there even tho the AND is being folded.
+	// I think it's an issue with the And's LOC meaning known bits prints it without a LOC and errorcheck skips it.
+	r := cvtBoolToUint8(x&6 == 6) // ERROR "known value of v[0-9]+ \(Eq64\): true$" "known value of v[0-9]+ \(CvtBoolToUint8\): 1$"
+	if cond {
+		r |= 4 // ERROR "known value of v[0-9]+ \(Or8\): 5$"
+	}
+	return r & 3 // ERROR "known value of v[0-9]+ \(And8\): 1$"
+}
+
+func unknownBitsCvtBoolToUint8(cond bool) uint8 {
+	return cvtBoolToUint8(cond) & 1
+}
