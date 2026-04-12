@@ -117,6 +117,11 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		srcSize := v.Args[0].Type.Size() * 8
 		mask := int64(1<<srcSize - 1)
 		return x & mask, k | ^mask
+	case OpLsh8x8, OpLsh16x8, OpLsh32x8, OpLsh64x8,
+		OpLsh8x16, OpLsh16x16, OpLsh32x16, OpLsh64x16,
+		OpLsh8x32, OpLsh16x32, OpLsh32x32, OpLsh64x32,
+		OpLsh8x64, OpLsh16x64, OpLsh32x64, OpLsh64x64:
+		return kb.computeKnownBitsForLsh(v)
 	default:
 		return 0, 0
 	}
@@ -218,4 +223,67 @@ func (kb *knownBitsState) isLiveOutEdge(b *Block, index uint) bool {
 	default:
 		panic("unreachable; unknown block kind")
 	}
+}
+
+// computeKnownBitsForLsh computes the known bits for a left shift.
+// Considering the following piece of code x = x << uint8(i)
+// The algorithm is based on two observations:
+//
+//  1. computing a shift of a lattice by a constant (i) is easy:
+//     value, known = x<<i, xk<<i|(1<<i-1)
+//     each point in the lattice is shifted by the constant, all new shifted in bits are known zeros.
+//
+//  2. x = uint8(x) << i is equivalent to
+//
+//     switch i {
+//     case 0:  x0 = x << 0
+//     case 1:  x1 = x << 1
+//     case 2:  x2 = x << 2
+//     case 3:  x3 = x << 3
+//     case 4:  x4 = x << 4
+//     case 5:  x5 = x << 5
+//     case 6:  x6 = x << 6
+//     case 7:  x7 = x << 7
+//     default: xd = x << 8
+//     }
+//     x = phi(x0, x1, x2, x3, x4, x5, x6, x7, xd)
+//
+// The algorithm below then models the phi in the equivalence above using same intersection algorithm phi uses.
+// We also leverage known bits of the shift amount to remove "branches" in the switch that are proved to be impossible.
+func (kb *knownBitsState) computeKnownBitsForLsh(v *Value) (value, known int64) {
+	xSize := v.Args[0].Type.Size() * 8
+	x, xk := kb.fold(v.Args[0])
+	y, yk := kb.fold(v.Args[1])
+	if uint64(y) >= uint64(xSize) {
+		return 0, -1
+	}
+
+	set := false
+	if v.AuxInt == 0 && uint64(^yk) >= uint64(xSize) {
+		// this implement the default case of the equivalent switch above.
+		// if the shift isn't bounded and there are unknown bits above the shift size we might completely stomp all bits.
+		value = 0
+		known = -1
+		set = true
+	}
+	yk &= xSize - 1
+
+	for i := range xSize {
+		if i&yk != y {
+			continue
+		}
+		a, k := x<<i, xk<<i|(1<<i-1)
+		if !set {
+			value, known = a, k
+			set = true
+		} else {
+			known &^= value ^ a
+			known &= k
+		}
+		if known == 0 {
+			break
+		}
+	}
+
+	return value & known, known
 }
