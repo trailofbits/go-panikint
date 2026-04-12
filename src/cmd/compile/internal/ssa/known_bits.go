@@ -88,7 +88,10 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		}
 		return value, known
 	case OpCopy, OpCvtBoolToUint8,
-		OpSignExt8to16, OpSignExt8to32, OpSignExt8to64, OpSignExt16to32, OpSignExt16to64, OpSignExt32to64:
+		OpSignExt8to16, OpSignExt8to32, OpSignExt8to64, OpSignExt16to32, OpSignExt16to64, OpSignExt32to64,
+		// The defer block handles maintaining the sign-extension invariant using v.Type.Size()
+		// thus we can just pass Truncs as-is.
+		OpTrunc64to32, OpTrunc64to16, OpTrunc64to8, OpTrunc32to16, OpTrunc32to8, OpTrunc16to8:
 		return kb.fold(v.Args[0])
 	case OpEq64, OpEq32, OpEq16, OpEq8, OpEqB:
 		x, xk := kb.fold(v.Args[0])

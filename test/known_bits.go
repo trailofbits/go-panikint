@@ -383,3 +383,51 @@ func unknownBitsRshRightSide(x int32, y int32) int32 {
 
 	return (x >> y) & 0b110
 }
+
+func knownBitsTrunc(x int64, cond bool) int32 {
+	x |= 2
+	if cond {
+		x = 3
+	}
+
+	return int32(x) & 2 // ERROR "known value of v[0-9]+ \(And32\): 2$"
+}
+
+func unknownBitsTrunc(x int64, cond bool) int32 {
+	x |= 2
+	if cond {
+		x = 3
+	}
+
+	return int32(x) & 1
+}
+
+func knownBitsSextAfterTrunc(x int64, cond1, cond2 bool) int64 {
+	x |= -1 << 31
+	if cond1 {
+		x = -3
+	}
+
+	truncated := int32(x)
+
+	if cond2 {
+		truncated |= 4
+	}
+
+	return int64(truncated) & (-1 << 63) // ERROR "known value of v[0-9]+ \(And64\): -9223372036854775808$"
+}
+
+func unknownBitsSextAfterTrunc(x int64, cond1, cond2 bool) int64 {
+	x |= 2
+	if cond1 {
+		x = 3
+	}
+
+	truncated := int32(x)
+
+	if cond2 {
+		truncated |= 4
+	}
+
+	return int64(truncated) & (-1 << 63)
+}
