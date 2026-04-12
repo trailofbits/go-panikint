@@ -167,3 +167,17 @@ func unknownBitsEq(x, y uint64) bool {
 	x |= 1
 	return x == y
 }
+
+func knownBitsZeroExtPassThrough(x uint8) uint64 {
+	x |= 6
+	return uint64(x) & 6 // ERROR "known value of v[0-9]+ \(And64\): 6$"
+}
+
+func knownBitsZeroExtUpperHalf(x uint16) uint32 {
+	return uint32(x) & 0xFFFF0000 // ERROR "known value of v[0-9]+ \(And32\): 0$"
+}
+
+func unknownBitsZeroExt(x uint16) uint32 {
+	x |= 0xAAAA
+	return uint32(x) & 0xFFFFF000
+}

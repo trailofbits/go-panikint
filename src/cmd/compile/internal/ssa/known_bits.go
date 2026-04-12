@@ -100,6 +100,11 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 			return boolToAuxInt(x == y), -1
 		}
 		return 0, -1 << 1
+	case OpZeroExt8to16, OpZeroExt8to32, OpZeroExt8to64, OpZeroExt16to32, OpZeroExt16to64, OpZeroExt32to64:
+		x, k := kb.fold(v.Args[0])
+		srcSize := v.Args[0].Type.Size() * 8
+		mask := int64(1<<srcSize - 1)
+		return x & mask, k | ^mask
 	default:
 		return 0, 0
 	}
