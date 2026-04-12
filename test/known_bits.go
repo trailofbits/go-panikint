@@ -168,6 +168,26 @@ func unknownBitsEq(x, y uint64) bool {
 	return x == y
 }
 
+func knownBitsNeqTrue(x, y uint64) bool {
+	x |= 1
+	y &^= 1
+	return x != y // ERROR "known value of v[0-9]+ \(Neq64\): true$"
+}
+
+func knownBitsNeqFalse(x uint64, cond bool) bool {
+	x |= (1<<32 - 1) << 32
+	if cond {
+		x |= 42
+	}
+	x |= 1<<32 - 1
+	return x != 1<<64-1 // ERROR "known value of v[0-9]+ \(Neq64\): false$"
+}
+
+func unknownBitsNeq(x, y uint64) bool {
+	x |= 1
+	return x != y
+}
+
 func knownBitsZeroExtPassThrough(x uint8) uint64 {
 	x |= 6
 	return uint64(x) & 6 // ERROR "known value of v[0-9]+ \(And64\): 6$"

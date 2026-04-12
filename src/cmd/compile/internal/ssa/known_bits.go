@@ -101,6 +101,17 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 			return boolToAuxInt(x == y), -1
 		}
 		return 0, -1 << 1
+	case OpNeq64, OpNeq32, OpNeq16, OpNeq8, OpNeqB:
+		x, xk := kb.fold(v.Args[0])
+		y, yk := kb.fold(v.Args[1])
+		differentBits := x ^ y
+		if differentBits&xk&yk != 0 {
+			return 1, -1
+		}
+		if xk == -1 && yk == -1 {
+			return boolToAuxInt(x != y), -1
+		}
+		return 0, -1 << 1
 	case OpZeroExt8to16, OpZeroExt8to32, OpZeroExt8to64, OpZeroExt16to32, OpZeroExt16to64, OpZeroExt32to64:
 		x, k := kb.fold(v.Args[0])
 		srcSize := v.Args[0].Type.Size() * 8
