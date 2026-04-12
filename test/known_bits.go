@@ -294,3 +294,48 @@ func unknownBitsLshRightSide(x uint32, y uint32) uint32 {
 
 	return (x << y) & 0b11000
 }
+
+func knownBitsRshU(x, y uint32) uint32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 2
+
+	// ?01111?
+	// ???0111
+	// -------
+	// ????11?
+
+	return (x >> y) & 0b110 // ERROR "known value of v[0-9]+ \(And32\): 6$"
+}
+
+func knownBitsRshUZero(x, y uint64) uint64 {
+	x &^= 4
+	y &^= 2
+	y |= 128
+
+	return (x >> y) & 1 // ERROR "known value of v[0-9]+ \(And64\): 0$" "known value of v[0-9]+ \(Rsh64Ux[0-9]+\): 0$"
+}
+
+func unknownBitsRshULeftSideMsb(x uint32, y uint32) uint32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 2
+
+	return (x >> y) & 0b1110
+}
+
+func unknownBitsRshULeftSideLsb(x uint32, y uint32) uint32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 2
+
+	return (x >> y) & 0b111
+}
+
+func unknownBitsRshURightSide(x uint32, y uint32) uint32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 6
+
+	return (x >> y) & 0b110
+}

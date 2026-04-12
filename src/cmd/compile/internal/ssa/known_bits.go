@@ -122,6 +122,11 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		OpLsh8x32, OpLsh16x32, OpLsh32x32, OpLsh64x32,
 		OpLsh8x64, OpLsh16x64, OpLsh32x64, OpLsh64x64:
 		return kb.computeKnownBitsForLsh(v)
+	case OpRsh8Ux8, OpRsh16Ux8, OpRsh32Ux8, OpRsh64Ux8,
+		OpRsh8Ux16, OpRsh16Ux16, OpRsh32Ux16, OpRsh64Ux16,
+		OpRsh8Ux32, OpRsh16Ux32, OpRsh32Ux32, OpRsh64Ux32,
+		OpRsh8Ux64, OpRsh16Ux64, OpRsh32Ux64, OpRsh64Ux64:
+		return kb.computeKnownBitsForRshU(v)
 	default:
 		return 0, 0
 	}
@@ -283,6 +288,45 @@ func (kb *knownBitsState) computeKnownBitsForLsh(v *Value) (value, known int64) 
 		if known == 0 {
 			break
 		}
+	}
+
+	return value & known, known
+}
+
+// computeKnownBitsForRshU is the same as computeKnownBitsForLsh but for unsigned right shifts.
+func (kb *knownBitsState) computeKnownBitsForRshU(v *Value) (value, known int64) {
+	xSize := v.Args[0].Type.Size() * 8
+	x, xk := kb.fold(v.Args[0])
+	y, yk := kb.fold(v.Args[1])
+	if uint64(y) >= uint64(xSize) {
+		return 0, -1
+	}
+
+	set := false
+	if v.AuxInt == 0 && uint64(^yk) >= uint64(xSize) {
+		// this implement the default case of the equivalent switch.
+		// if the shift isn't bounded and there are unknown bits above the shift size we might completely stomp all bits.
+		value = 0
+		known = -1
+		set = true
+	}
+	xk |= -1 << xSize
+	x &= (1<<xSize - 1)
+	yk &= xSize - 1
+
+	for i := range xSize {
+		if i&yk != y {
+			continue
+		}
+		a, k := uint64(x)>>i, uint64(xk)>>i|(^uint64(0)<<(64-i))
+		if !set {
+			value, known = int64(a), int64(k)
+			set = true
+		} else {
+			known &^= value ^ int64(a)
+			known &= int64(k)
+		}
+		continue
 	}
 
 	return value & known, known
