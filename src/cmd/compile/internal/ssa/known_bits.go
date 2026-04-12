@@ -44,7 +44,7 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 	kb.seenValues.Set(uint32(v.ID)) // set seen early to give up on loops
 
 	switch v.Op {
-	// TODO: Shifts, rotates, extensions, ...
+	// TODO: Shifts, rotates, ...
 	case OpConst64, OpConst32, OpConst16, OpConst8, OpConstBool:
 		return v.AuxInt, -1
 	case OpAnd64, OpAnd32, OpAnd16, OpAnd8, OpAndB:
@@ -87,7 +87,8 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 			}
 		}
 		return value, known
-	case OpCopy, OpCvtBoolToUint8:
+	case OpCopy, OpCvtBoolToUint8,
+		OpSignExt8to16, OpSignExt8to32, OpSignExt8to64, OpSignExt16to32, OpSignExt16to64, OpSignExt32to64:
 		return kb.fold(v.Args[0])
 	case OpEq64, OpEq32, OpEq16, OpEq8, OpEqB:
 		x, xk := kb.fold(v.Args[0])

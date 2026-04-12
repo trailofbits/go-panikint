@@ -214,3 +214,18 @@ func knownBitsCvtBoolToUint8True(x int64, cond bool) uint8 {
 func unknownBitsCvtBoolToUint8(cond bool) uint8 {
 	return cvtBoolToUint8(cond) & 1
 }
+
+func knownBitsSignExtPassThrough(x int8) int64 {
+	x |= 6
+	return int64(x) & 6 // ERROR "known value of v[0-9]+ \(And64\): 6$"
+}
+
+func knownBitsSignExtUpperHalf(x int16) int32 {
+	x |= -1 << 15
+	return int32(x) & (-1 << 16) // ERROR "known value of v[0-9]+ \(And32\): -65536$"
+}
+
+func unknownBitsSignExt(x int16) int32 {
+	x |= -0b010101010101010
+	return int32(x) & -1 << 12
+}
