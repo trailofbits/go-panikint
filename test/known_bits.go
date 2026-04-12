@@ -339,3 +339,47 @@ func unknownBitsRshURightSide(x uint32, y uint32) uint32 {
 
 	return (x >> y) & 0b110
 }
+
+func knownBitsRsh(x, y int32) int32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 2
+
+	// ?01111?
+	// ???0111
+	// -------
+	// ????11?
+
+	return (x >> y) & 0b110 // ERROR "known value of v[0-9]+ \(And32\): 6$"
+}
+
+func knownBitsRshSignCopy(x, y int64) int64 {
+	x |= -1 << 63
+	y |= 128
+
+	return (x >> y) & 1 // ERROR "known value of v[0-9]+ \(And64\): 1$"
+}
+
+func unknownBitsRshLeftSideMsb(x int32, y int32) int32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 2
+
+	return (x >> y) & 0b1110
+}
+
+func unknownBitsRshLeftSideLsb(x int32, y int32) int32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 2
+
+	return (x >> y) & 0b111
+}
+
+func unknownBitsRshRightSide(x int32, y int32) int32 {
+	x |= 0b11110
+	x &^= 0b100000
+	y &= 6
+
+	return (x >> y) & 0b110
+}

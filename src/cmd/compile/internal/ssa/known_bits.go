@@ -44,7 +44,7 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 	kb.seenValues.Set(uint32(v.ID)) // set seen early to give up on loops
 
 	switch v.Op {
-	// TODO: Shifts, rotates, ...
+	// TODO: rotates, ...
 	case OpConst64, OpConst32, OpConst16, OpConst8, OpConstBool:
 		return v.AuxInt, -1
 	case OpAnd64, OpAnd32, OpAnd16, OpAnd8, OpAndB:
@@ -127,6 +127,11 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		OpRsh8Ux32, OpRsh16Ux32, OpRsh32Ux32, OpRsh64Ux32,
 		OpRsh8Ux64, OpRsh16Ux64, OpRsh32Ux64, OpRsh64Ux64:
 		return kb.computeKnownBitsForRshU(v)
+	case OpRsh8x8, OpRsh16x8, OpRsh32x8, OpRsh64x8,
+		OpRsh8x16, OpRsh16x16, OpRsh32x16, OpRsh64x16,
+		OpRsh8x32, OpRsh16x32, OpRsh32x32, OpRsh64x32,
+		OpRsh8x64, OpRsh16x64, OpRsh32x64, OpRsh64x64:
+		return kb.computeKnownBitsForRsh(v)
 	default:
 		return 0, 0
 	}
@@ -319,6 +324,45 @@ func (kb *knownBitsState) computeKnownBitsForRshU(v *Value) (value, known int64)
 			continue
 		}
 		a, k := uint64(x)>>i, uint64(xk)>>i|(^uint64(0)<<(64-i))
+		if !set {
+			value, known = int64(a), int64(k)
+			set = true
+		} else {
+			known &^= value ^ int64(a)
+			known &= int64(k)
+		}
+		if known == 0 {
+			break
+		}
+	}
+
+	return value & known, known
+}
+
+// computeKnownBitsForRsh is the same as computeKnownBitsForLsh but for signed right shifts.
+func (kb *knownBitsState) computeKnownBitsForRsh(v *Value) (value, known int64) {
+	xSize := v.Args[0].Type.Size() * 8
+	x, xk := kb.fold(v.Args[0])
+	y, yk := kb.fold(v.Args[1])
+	if uint64(y) >= uint64(xSize) {
+		return x >> 63, xk >> 63
+	}
+
+	set := false
+	if v.AuxInt == 0 && uint64(^yk) >= uint64(xSize) {
+		// this implement the default case of the equivalent switch.
+		// if the shift isn't bounded and there are unknown bits above the shift size we might completely sign-extend all bits.
+		value = x >> 63
+		known = xk >> 63
+		set = true
+	}
+	yk &= xSize - 1
+
+	for i := range xSize {
+		if i&yk != y {
+			continue
+		}
+		a, k := x>>i, xk>>i
 		if !set {
 			value, known = int64(a), int64(k)
 			set = true
