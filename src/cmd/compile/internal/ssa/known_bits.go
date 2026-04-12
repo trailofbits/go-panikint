@@ -121,17 +121,25 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		OpLsh8x16, OpLsh16x16, OpLsh32x16, OpLsh64x16,
 		OpLsh8x32, OpLsh16x32, OpLsh32x32, OpLsh64x32,
 		OpLsh8x64, OpLsh16x64, OpLsh32x64, OpLsh64x64:
-		return kb.computeKnownBitsForLsh(v)
+		return kb.computeKnownBitsForShift(v, func(x, xk, xSize, shift int64) (value, known int64) {
+			return x << shift, xk<<shift | (1<<shift - 1)
+		})
 	case OpRsh8Ux8, OpRsh16Ux8, OpRsh32Ux8, OpRsh64Ux8,
 		OpRsh8Ux16, OpRsh16Ux16, OpRsh32Ux16, OpRsh64Ux16,
 		OpRsh8Ux32, OpRsh16Ux32, OpRsh32Ux32, OpRsh64Ux32,
 		OpRsh8Ux64, OpRsh16Ux64, OpRsh32Ux64, OpRsh64Ux64:
-		return kb.computeKnownBitsForRshU(v)
+		return kb.computeKnownBitsForShift(v, func(x, xk, xSize, shift int64) (value, known int64) {
+			x &= (1<<xSize - 1)
+			xk |= -1 << xSize
+			return int64(uint64(x) >> shift), int64(uint64(xk)>>shift | (^uint64(0) << (64 - shift)))
+		})
 	case OpRsh8x8, OpRsh16x8, OpRsh32x8, OpRsh64x8,
 		OpRsh8x16, OpRsh16x16, OpRsh32x16, OpRsh64x16,
 		OpRsh8x32, OpRsh16x32, OpRsh32x32, OpRsh64x32,
 		OpRsh8x64, OpRsh16x64, OpRsh32x64, OpRsh64x64:
-		return kb.computeKnownBitsForRsh(v)
+		return kb.computeKnownBitsForShift(v, func(x, xk, xSize, shift int64) (value, known int64) {
+			return x >> shift, xk >> shift
+		})
 	default:
 		return 0, 0
 	}
@@ -235,7 +243,7 @@ func (kb *knownBitsState) isLiveOutEdge(b *Block, index uint) bool {
 	}
 }
 
-// computeKnownBitsForLsh computes the known bits for a left shift.
+// computeKnownBitsForShift computes the known bits for a shift operation.
 // Considering the following piece of code x = x << uint8(i)
 // The algorithm is based on two observations:
 //
@@ -260,20 +268,20 @@ func (kb *knownBitsState) isLiveOutEdge(b *Block, index uint) bool {
 //
 // The algorithm below then models the phi in the equivalence above using same intersection algorithm phi uses.
 // We also leverage known bits of the shift amount to remove "branches" in the switch that are proved to be impossible.
-func (kb *knownBitsState) computeKnownBitsForLsh(v *Value) (value, known int64) {
+func (kb *knownBitsState) computeKnownBitsForShift(v *Value, doShiftByAConst func(x, xk, xSize, shift int64) (value, known int64)) (value, known int64) {
 	xSize := v.Args[0].Type.Size() * 8
 	x, xk := kb.fold(v.Args[0])
 	y, yk := kb.fold(v.Args[1])
 	if uint64(y) >= uint64(xSize) {
-		return 0, -1
+		return doShiftByAConst(x, xk, xSize, 64)
 	}
 
 	set := false
 	if v.AuxInt == 0 && uint64(^yk) >= uint64(xSize) {
 		// this implement the default case of the equivalent switch above.
 		// if the shift isn't bounded and there are unknown bits above the shift size we might completely stomp all bits.
-		value = 0
-		known = -1
+
+		value, known = doShiftByAConst(x, xk, xSize, 64)
 		set = true
 	}
 	yk &= xSize - 1
@@ -282,7 +290,7 @@ func (kb *knownBitsState) computeKnownBitsForLsh(v *Value) (value, known int64) 
 		if i&yk != y {
 			continue
 		}
-		a, k := x<<i, xk<<i|(1<<i-1)
+		a, k := doShiftByAConst(x, xk, xSize, int64(i))
 		if !set {
 			value, known = a, k
 			set = true
@@ -293,84 +301,6 @@ func (kb *knownBitsState) computeKnownBitsForLsh(v *Value) (value, known int64) 
 		if known == 0 {
 			break
 		}
-	}
-
-	return value & known, known
-}
-
-// computeKnownBitsForRshU is the same as computeKnownBitsForLsh but for unsigned right shifts.
-func (kb *knownBitsState) computeKnownBitsForRshU(v *Value) (value, known int64) {
-	xSize := v.Args[0].Type.Size() * 8
-	x, xk := kb.fold(v.Args[0])
-	y, yk := kb.fold(v.Args[1])
-	if uint64(y) >= uint64(xSize) {
-		return 0, -1
-	}
-
-	set := false
-	if v.AuxInt == 0 && uint64(^yk) >= uint64(xSize) {
-		// this implement the default case of the equivalent switch.
-		// if the shift isn't bounded and there are unknown bits above the shift size we might completely stomp all bits.
-		value = 0
-		known = -1
-		set = true
-	}
-	xk |= -1 << xSize
-	x &= (1<<xSize - 1)
-	yk &= xSize - 1
-
-	for i := range xSize {
-		if i&yk != y {
-			continue
-		}
-		a, k := uint64(x)>>i, uint64(xk)>>i|(^uint64(0)<<(64-i))
-		if !set {
-			value, known = int64(a), int64(k)
-			set = true
-		} else {
-			known &^= value ^ int64(a)
-			known &= int64(k)
-		}
-		if known == 0 {
-			break
-		}
-	}
-
-	return value & known, known
-}
-
-// computeKnownBitsForRsh is the same as computeKnownBitsForLsh but for signed right shifts.
-func (kb *knownBitsState) computeKnownBitsForRsh(v *Value) (value, known int64) {
-	xSize := v.Args[0].Type.Size() * 8
-	x, xk := kb.fold(v.Args[0])
-	y, yk := kb.fold(v.Args[1])
-	if uint64(y) >= uint64(xSize) {
-		return x >> 63, xk >> 63
-	}
-
-	set := false
-	if v.AuxInt == 0 && uint64(^yk) >= uint64(xSize) {
-		// this implement the default case of the equivalent switch.
-		// if the shift isn't bounded and there are unknown bits above the shift size we might completely sign-extend all bits.
-		value = x >> 63
-		known = xk >> 63
-		set = true
-	}
-	yk &= xSize - 1
-
-	for i := range xSize {
-		if i&yk != y {
-			continue
-		}
-		a, k := x>>i, xk>>i
-		if !set {
-			value, known = int64(a), int64(k)
-			set = true
-		} else {
-			known &^= value ^ int64(a)
-			known &= int64(k)
-		}
-		continue
 	}
 
 	return value & known, known
