@@ -9,7 +9,13 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		return kb.entries[v.ID].value, kb.entries[v.ID].known
 	}
 	defer func() {
-		// maintain the two invariants:
+		// maintain the invariants:
+		// 3. booleans are stored as 1 byte values who are either 0 or 1.
+		if v.Type.IsBoolean() {
+			value &= 1
+			known |= ^1
+		}
+
 		// 2. all values are sign-extended to int64 (inspired by RISC-V's xlen=64)
 		switch v.Type.Size() {
 		case 1:
@@ -39,16 +45,16 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 
 	switch v.Op {
 	// TODO: Shifts, rotates, extensions, ...
-	case OpConst64, OpConst32, OpConst16, OpConst8:
+	case OpConst64, OpConst32, OpConst16, OpConst8, OpConstBool:
 		return v.AuxInt, -1
-	case OpAnd64, OpAnd32, OpAnd16, OpAnd8:
+	case OpAnd64, OpAnd32, OpAnd16, OpAnd8, OpAndB:
 		x, xk := kb.fold(v.Args[0])
 		y, yk := kb.fold(v.Args[1])
 		onesInBoth := x & y
 		zerosInX := ^x & xk
 		zerosInY := ^y & yk
 		return x & y, onesInBoth | zerosInX | zerosInY
-	case OpOr64, OpOr32, OpOr16, OpOr8:
+	case OpOr64, OpOr32, OpOr16, OpOr8, OpOrB:
 		x, xk := kb.fold(v.Args[0])
 		y, yk := kb.fold(v.Args[1])
 		zerosInBoth := ^x & ^y & (xk & yk)
@@ -59,7 +65,7 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		x, xk := kb.fold(v.Args[0])
 		y, yk := kb.fold(v.Args[1])
 		return x ^ y, xk & yk
-	case OpCom64, OpCom32, OpCom16, OpCom8:
+	case OpCom64, OpCom32, OpCom16, OpCom8, OpNot:
 		x, xk := kb.fold(v.Args[0])
 		return ^x, xk
 	case OpPhi:
@@ -83,6 +89,17 @@ func (kb *knownBitsState) fold(v *Value) (value, known int64) {
 		return value, known
 	case OpCopy:
 		return kb.fold(v.Args[0])
+	case OpEq64, OpEq32, OpEq16, OpEq8, OpEqB:
+		x, xk := kb.fold(v.Args[0])
+		y, yk := kb.fold(v.Args[1])
+		differentBits := x ^ y
+		if differentBits&xk&yk != 0 {
+			return 0, -1
+		}
+		if xk == -1 && yk == -1 {
+			return boolToAuxInt(x == y), -1
+		}
+		return 0, -1 << 1
 	default:
 		return 0, 0
 	}
@@ -109,11 +126,11 @@ func knownBits(f *Func) {
 
 	for _, b := range blocks {
 		for _, v := range b.Values {
-			if v.Uses == 0 || !v.Type.IsInteger() {
+			if v.Uses == 0 || !(v.Type.IsInteger() || v.Type.IsBoolean()) {
 				continue
 			}
 			switch v.Op {
-			case OpConst64, OpConst32, OpConst16, OpConst8:
+			case OpConst64, OpConst32, OpConst16, OpConst8, OpConstBool:
 				continue
 			}
 			val, k := kb.fold(v)
@@ -121,11 +138,19 @@ func knownBits(f *Func) {
 				continue
 			}
 			if f.pass.debug > 0 {
-				f.Warnl(v.Pos, "known value of %v (%v): %d", v, v.Op, val)
+				var pval any = val
+				if v.Type.IsBoolean() {
+					pval = val != 0
+				}
+				f.Warnl(v.Pos, "known value of %v (%v): %v", v, v.Op, pval)
 			}
 			var c *Value
 			switch v.Type.Size() {
 			case 1:
+				if v.Type.IsBoolean() {
+					c = f.ConstBool(v.Type, val != 0)
+					break
+				}
 				c = f.ConstInt8(v.Type, int8(val))
 			case 2:
 				c = f.ConstInt16(v.Type, int16(val))
@@ -154,6 +179,7 @@ type knownBitsEntry struct {
 	//    This means let's say you know an 8 bits value is 0b10??????,
 	//    known = int64(int8(0b11000000))
 	//    value = int64(int8(0b10000000))
+	// 3. booleans are stored as 1 byte values who are either 0 or 1.
 	known, value int64
 }
 

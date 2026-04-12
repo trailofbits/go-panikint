@@ -147,3 +147,23 @@ func unknownBitsPhiComAnd(cond bool) int {
 	}
 	return ^x & 1
 }
+
+func knownBitsEqFalse(x, y uint64) bool {
+	x |= 1
+	y &^= 1
+	return x == y // ERROR "known value of v[0-9]+ \(Eq64\): false$"
+}
+
+func knownBitsEqTrue(x uint64, cond bool) bool {
+	x |= (1<<32 - 1) << 32
+	if cond {
+		x |= 42
+	}
+	x |= 1<<32 - 1      // ERROR "known value of v[0-9]+ \(Or64\): -1$"
+	return x == 1<<64-1 // ERROR "known value of v[0-9]+ \(Eq64\): true$"
+}
+
+func unknownBitsEq(x, y uint64) bool {
+	x |= 1
+	return x == y
+}
