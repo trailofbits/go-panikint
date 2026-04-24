@@ -47,9 +47,12 @@ Supported profile types are:
     - sched: scheduler latency profile
 
 Flags:
-	-http=addr: HTTP service address (e.g., ':6060')
+	-http=addr: HTTP server listen address (e.g., ':6060')
 	-pprof=type: print a pprof-like profile instead
 	-d=mode: print debug info and exit (modes: wire, parsed, footprint)
+
+When providing only a port to -http (e.g., ':6060'), the tool listens only on localhost.
+To listen on all addresses, explicitly add the unspecified address (e.g., '0.0.0.0:6060').
 
 Note that while the various profiles available when launching
 'go tool trace' work on every browser, the trace viewer itself
@@ -58,7 +61,7 @@ and is only actively tested on that browser.
 `
 
 var (
-	httpFlag  = flag.String("http", "localhost:0", "HTTP service address (e.g., ':6060')")
+	httpFlag  = flag.String("http", "localhost:0", "HTTP server listen address (e.g., ':6060')")
 	pprofFlag = flag.String("pprof", "", "print a pprof-like profile instead")
 	debugFlag = flag.String("d", "", "print debug info and exit (modes: wire, parsed, footprint)")
 
@@ -145,11 +148,16 @@ func main() {
 		}
 	}
 
-	ln, err := net.Listen("tcp", *httpFlag)
+	addr, err := listenAddr(*httpFlag)
+	if err != nil {
+		logAndDie(fmt.Errorf("malformed -http value %q: %v", *httpFlag, err))
+	}
+
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		logAndDie(fmt.Errorf("failed to create server socket: %w", err))
 	}
-	addr := "http://" + ln.Addr().String()
+	url := "http://" + ln.Addr().String()
 
 	log.Print("Preparing trace for viewer...")
 	parsed, err := parseTraceInteractive(tracef, traceSize)
@@ -175,7 +183,7 @@ func main() {
 		logAndDie(err)
 	}
 
-	log.Printf("Opening browser. Trace viewer is listening on %s", addr)
+	log.Printf("Opening browser. Trace viewer is listening on %s", url)
 	browser.Open(addr)
 
 	mutatorUtil := func(flags trace.UtilFlags) ([][]trace.MutatorUtil, error) {
@@ -235,6 +243,22 @@ func logAndDie(err error) {
 	}
 	fmt.Fprintf(os.Stderr, "%s\n", err)
 	os.Exit(1)
+}
+
+// listenAddr returns the address to listen on given the addr address flag.
+//
+// If addr does not specify a host (e.g., ":8080"), then default to listening
+// only on localhost rather than all addresses. To listen on all addresses,
+// explicitly set the unspecified address (e.g., "0.0.0.0:8080").
+func listenAddr(addr string) (string, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", err
+	}
+	if host == "" {
+		host = "localhost"
+	}
+	return net.JoinHostPort(host, port), nil
 }
 
 func parseTraceInteractive(tr io.Reader, size int64) (parsed *parsedTrace, err error) {
