@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Required to use pprof
+	"net/netip"
 	"os"
 	"slices"
 	"sync/atomic"
@@ -157,7 +158,12 @@ func main() {
 	if err != nil {
 		logAndDie(fmt.Errorf("failed to create server socket: %w", err))
 	}
-	url := "http://" + ln.Addr().String()
+
+	addr = ln.Addr().String()
+	url, simplified, err := addrURL(addr)
+	if err != nil {
+		logAndDie(fmt.Errorf("failed to compute server URL: %v", err))
+	}
 
 	log.Print("Preparing trace for viewer...")
 	parsed, err := parseTraceInteractive(tracef, traceSize)
@@ -183,6 +189,13 @@ func main() {
 		logAndDie(err)
 	}
 
+	if simplified {
+		// Warn that the URL below is simplified. i.e., we are actually
+		// listening on more addresses than the URL implies.
+		log.Printf("Full server listen address: %s", addr)
+	}
+	// N.B. gopls depends on the format of this log message. See
+	// golang.org/x/tools/gopls/internal/debug.startFlightRecorder.
 	log.Printf("Opening browser. Trace viewer is listening on %s", url)
 	browser.Open(addr)
 
@@ -259,6 +272,47 @@ func listenAddr(addr string) (string, error) {
 		host = "localhost"
 	}
 	return net.JoinHostPort(host, port), nil
+}
+
+// addrURL returns an HTTP URL that may be used to connect to addr.
+//
+// It also returns a bool indicating if the returned URL uses a rewritten address.
+func addrURL(addr string) (string, bool, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", false, err
+	}
+
+	if host == "" {
+		// No host implies unspecified address, so rewrite to
+		// localhost, as below.
+		//
+		// addr should come from a net.Listener and thus always include
+		// a host, but handle this just in case.
+		host = "localhost"
+		return "http://" + net.JoinHostPort(host, port), true, nil
+	}
+
+	ipaddr, err := netip.ParseAddr(host)
+	if err != nil {
+		// Not an IP address, no change required.
+		return "http://" + net.JoinHostPort(host, port), false, nil
+	}
+
+	if ipaddr.IsUnspecified() {
+		// An unspecified address means (e.g., 0.0.0.0) this addr is
+		// listening on all addresses. It doesn't make sense to connect
+		// to the unspecified address [1], so rewrite to localhost. A
+		// connection to localhost with route to the same place.
+		//
+		// [1] Linux happens to treat connect to the unspecified
+		// address as loopback, but other OSes, such as Windows, treat
+		// it as an error.
+		host = "localhost"
+		return "http://" + net.JoinHostPort(host, port), true, nil
+	}
+
+	return "http://" + net.JoinHostPort(host, port), false, nil
 }
 
 func parseTraceInteractive(tr io.Reader, size int64) (parsed *parsedTrace, err error) {

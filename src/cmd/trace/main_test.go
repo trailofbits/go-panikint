@@ -58,3 +58,58 @@ func TestListenAddr(t *testing.T) {
 		})
 	}
 }
+
+func TestAddrURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		addr           string
+		wantURL        string
+		wantSimplified bool
+	}{
+		{
+			name:           "empty host",
+			addr:           ":8080",
+			wantURL:        "http://localhost:8080",
+			wantSimplified: true,
+		},
+		{
+			name:           "with host",
+			addr:           "localhost:8080",
+			wantURL:        "http://localhost:8080",
+			wantSimplified: false,
+		},
+		{
+			name:           "with ip",
+			addr:           "10.10.10.10:8080",
+			wantURL:        "http://10.10.10.10:8080",
+			wantSimplified: false,
+		},
+		{
+			name:           "unspecified ipv4",
+			addr:           "0.0.0.0:8080",
+			wantURL:        "http://localhost:8080",
+			wantSimplified: true,
+		},
+		{
+			name:           "unspecified ipv6",
+			addr:           "[::]:8080",
+			wantURL:        "http://localhost:8080",
+			wantSimplified: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotURL, gotSimplified, err := addrURL(tt.addr)
+			if err != nil {
+				t.Fatalf("addrURL(%q) got err %v want nil", tt.addr, err)
+			}
+			if gotURL != tt.wantURL {
+				t.Errorf("addrURL(%q) = %q, want %q", tt.addr, gotURL, tt.wantURL)
+			}
+			if gotSimplified != tt.wantSimplified {
+				t.Errorf("addrURL(%q) simplified = %v, want %v", tt.addr, gotSimplified, tt.wantSimplified)
+			}
+		})
+	}
+}
