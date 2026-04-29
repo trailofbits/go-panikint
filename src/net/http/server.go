@@ -616,6 +616,30 @@ func (w *response) ReadFrom(src io.Reader) (n int64, err error) {
 
 	// Now that cw has been flushed, its chunking field is guaranteed initialized.
 	if !w.cw.chunking && w.bodyAllowed() && w.req.Method != "HEAD" {
+		// When a content length is declared, but exceeded; any excess bytes
+		// from src should be ignored, and ErrContentLength should be returned.
+		// This mirrors the behavior of response.Write.
+		if w.contentLength != -1 {
+			defer func(originalReader io.Reader) {
+				if w.written != w.contentLength {
+					return
+				}
+				if n, _ := originalReader.Read([]byte{0}); err == nil && n != 0 {
+					err = ErrContentLength
+				}
+			}(src)
+			// src can be an io.LimitedReader already. To avoid unnecessary
+			// alloc and having to unnest readers repeatedly in net.sendFile,
+			// just adjust the existing LimitedReader N when this is the case.
+			if lr, ok := src.(*io.LimitedReader); ok {
+				if lenDiff := lr.N - (w.contentLength - w.written); lenDiff > 0 {
+					defer func() { lr.N += lenDiff }()
+					lr.N -= lenDiff
+				}
+			} else {
+				src = io.LimitReader(src, w.contentLength-w.written)
+			}
+		}
 		n0, err := rf.ReadFrom(src)
 		n += n0
 		w.written += n0
@@ -1136,7 +1160,8 @@ func relevantCaller() runtime.Frame {
 	frames := runtime.CallersFrames(pc[:n])
 	var frame runtime.Frame
 	for {
-		frame, more := frames.Next()
+		var more bool
+		frame, more = frames.Next()
 		if !strings.HasPrefix(frame.Function, "net/http.") {
 			return frame
 		}
@@ -1922,14 +1947,21 @@ func (c *conn) serve(ctx context.Context) {
 		}
 	}()
 
-	if tlsConn, ok := c.rwc.(*tls.Conn); ok {
+	if connStater, ok := c.rwc.(connectionStater); ok {
 		tlsTO := c.server.tlsHandshakeTimeout()
 		if tlsTO > 0 {
 			dl := time.Now().Add(tlsTO)
 			c.rwc.SetReadDeadline(dl)
 			c.rwc.SetWriteDeadline(dl)
 		}
-		if err := tlsConn.HandshakeContext(ctx); err != nil {
+		type handshakeContexter interface {
+			HandshakeContext(ctx context.Context) error
+		}
+		var err error
+		if handshaker, ok := c.rwc.(handshakeContexter); ok {
+			err = handshaker.HandshakeContext(ctx)
+		}
+		if err != nil {
 			// If the handshake failed due to the client not speaking
 			// TLS, assume they're speaking plaintext HTTP and write a
 			// 400 response on the TLS conn's underlying net.Conn.
@@ -1950,13 +1982,25 @@ func (c *conn) serve(ctx context.Context) {
 			c.rwc.SetWriteDeadline(time.Time{})
 		}
 		c.tlsState = new(tls.ConnectionState)
-		*c.tlsState = tlsConn.ConnectionState()
-		if proto := c.tlsState.NegotiatedProtocol; validNextProto(proto) {
+		*c.tlsState = connStater.ConnectionState()
+		proto := c.tlsState.NegotiatedProtocol
+		if proto == "h2" && c.server.h2 != nil {
+			// net/http/internal/http2 path.
+			//
+			// Mark freshly created HTTP/2 as active and prevent any server state hooks
+			// from being run on these connections. This prevents closeIdleConns from
+			// closing such connections. See issue https://golang.org/issue/39776.
+			c.setState(c.rwc, StateActive, skipHooks)
+			const sawClientPreface = false
+			c.server.serveHTTP2Conn(ctx, c.rwc, serverHandler{c.server}, sawClientPreface, nil, nil)
+			return
+		}
+		tlsConn, tlsConnOK := c.rwc.(*tls.Conn)
+		if validNextProto(proto) && tlsConnOK {
+			// Legacy TLSNextProto path.
 			if fn := c.server.TLSNextProto[proto]; fn != nil {
 				h := initALPNRequest{ctx, tlsConn, serverHandler{c.server}}
-				// Mark freshly created HTTP/2 as active and prevent any server state hooks
-				// from being run on these connections. This prevents closeIdleConns from
-				// closing such connections. See issue https://golang.org/issue/39776.
+				// Mark freshly created HTTP/2 as active (see above).
 				c.setState(c.rwc, StateActive, skipHooks)
 				fn(c.server, tlsConn, h)
 			}
@@ -1964,7 +2008,7 @@ func (c *conn) serve(ctx context.Context) {
 		}
 	}
 
-	// HTTP/1.x from here on.
+	// HTTP/1.x or unencrypted HTTP/2.
 
 	// Set Request.TLS if the conn is not a *tls.Conn, but implements ConnectionState.
 	if c.tlsState == nil {
@@ -1991,6 +2035,8 @@ func (c *conn) serve(ctx context.Context) {
 	if !protos.HTTP1() {
 		return
 	}
+
+	// HTTP/1.x from here on.
 
 	for {
 		w, err := c.readRequest(ctx)
@@ -2157,9 +2203,13 @@ func unencryptedTLSConn(c net.Conn) *tls.Conn {
 const nextProtoUnencryptedHTTP2 = "unencrypted_http2"
 
 func (c *conn) maybeServeUnencryptedHTTP2(ctx context.Context) bool {
-	fn, ok := c.server.TLSNextProto[nextProtoUnencryptedHTTP2]
-	if !ok {
-		return false
+	var nextFunc func(*Server, *tls.Conn, Handler)
+	if c.server.h2 == nil {
+		var ok bool
+		nextFunc, ok = c.server.TLSNextProto[nextProtoUnencryptedHTTP2]
+		if !ok {
+			return false
+		}
 	}
 	hasPreface := func(c *conn, preface []byte) bool {
 		c.r.setReadLimit(int64(len(preface)) - int64(c.bufr.Buffered()))
@@ -2174,8 +2224,13 @@ func (c *conn) maybeServeUnencryptedHTTP2(ctx context.Context) bool {
 		return false
 	}
 	c.setState(c.rwc, StateActive, skipHooks)
-	h := unencryptedHTTP2Request{ctx, c.rwc, serverHandler{c.server}}
-	fn(c.server, unencryptedTLSConn(c.rwc), h)
+	if c.server.h2 != nil {
+		const sawClientPreface = true
+		c.server.serveHTTP2Conn(ctx, c.rwc, serverHandler{c.server}, sawClientPreface, nil, nil)
+	} else {
+		h := unencryptedHTTP2Request{ctx, c.rwc, serverHandler{c.server}}
+		nextFunc(c.server, unencryptedTLSConn(c.rwc), h)
+	}
 	return true
 }
 
@@ -3092,11 +3147,14 @@ type Server struct {
 	nextProtoOnce     sync.Once // guards setupHTTP2_* init
 	nextProtoErr      error     // result of http2.ConfigureServer if used
 
-	mu         sync.Mutex
-	listeners  map[*net.Listener]struct{}
-	activeConn map[*conn]struct{}
-	onShutdown []func()
-	h2         *http2Server
+	mu            sync.Mutex
+	listeners     map[*net.Listener]struct{}
+	activeConn    map[*conn]struct{}
+	onShutdown    []func()
+	h2            *http2Server
+	h2Config      http2ExternalServerConfig
+	h2IdleTimeout time.Duration
+	h3            *http3ServerHandler
 
 	listenerGroup sync.WaitGroup
 }
@@ -3164,6 +3222,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	s.inShutdown.Store(true)
 
 	s.mu.Lock()
+	if s.h3 != nil {
+		s.h3.shutdownCtx = ctx
+	}
 	lnerr := s.closeListenersLocked()
 	for _, f := range s.onShutdown {
 		go f()
@@ -3415,6 +3476,21 @@ var ErrServerClosed = errors.New("http: Server closed")
 // Serve always returns a non-nil error and closes l.
 // After [Server.Shutdown] or [Server.Close], the returned error is [ErrServerClosed].
 func (s *Server) Serve(l net.Listener) error {
+	if conf, ok := l.(http2ExternalServerConfig); ok {
+		// This is the sneaky path we use to let x/net/http2 wrap an http.Server:
+		// http2.ConfigureServer calls http.Server.Serve with a net.Listener that
+		// implements a certain interface, which we recognize here as an attempt
+		// to associate an http2.Server with us.
+		//
+		// (This is about as principled as the way we (ab)use Transport.RegisterProtocol,
+		// which is to say not at all. It's worth it.)
+		s.setHTTP2Config(conf)
+		// Server.Serve never returns a nil error under normal circumstances.
+		// Returning nil here informs our caller that we support this sneaky
+		// registration mechanism.
+		return nil
+	}
+
 	if fn := testHookServerServe; fn != nil {
 		fn(s, l) // call hook with unwrapped listener
 	}
@@ -3515,7 +3591,11 @@ func (s *Server) ServeTLS(l net.Listener, certFile, keyFile string) error {
 		return err
 	}
 
-	config, err := s.setupTLSConfig(certFile, keyFile, adjustNextProtos(s.TLSConfig.NextProtos, s.protocols()))
+	var nextProtos []string
+	if s.TLSConfig != nil {
+		nextProtos = s.TLSConfig.NextProtos
+	}
+	config, err := s.setupTLSConfig(certFile, keyFile, adjustNextProtos(nextProtos, s.protocols()))
 	if err != nil {
 		return err
 	}
@@ -3723,41 +3803,51 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler Handler) error {
 // us to test our HTTP/3 implementation againts tests in net/http. HTTP/3 is
 // not yet accessible to end-users.
 type http3ServerHandler struct {
-	handler   serverHandler
-	tlsConfig *tls.Config
-	baseCtx   context.Context
-	errc      chan error
+	handler     serverHandler
+	tlsConfig   *tls.Config
+	baseCtx     context.Context
+	errc        chan error
+	shutdownCtx context.Context
 }
 
 // ServeHTTP ensures that http3ServerHandler implements the Handler interface,
 // and gives an HTTP/3 server implementation access to the net/http handler.
-func (h http3ServerHandler) ServeHTTP(w ResponseWriter, r *Request) {
+func (h *http3ServerHandler) ServeHTTP(w ResponseWriter, r *Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
 // Addr gives an HTTP/3 server implementation the address that it should listen
 // on.
-func (h http3ServerHandler) Addr() string {
+func (h *http3ServerHandler) Addr() string {
 	return h.handler.srv.Addr
 }
 
 // TLSConfig gives an HTTP/3 server implementation the *tls.Config that it
 // should use.
-func (h http3ServerHandler) TLSConfig() *tls.Config {
+func (h *http3ServerHandler) TLSConfig() *tls.Config {
 	return h.tlsConfig
 }
 
 // BaseContext gives an HTTP/3 server implementation the base context to use
 // for server requests.
-func (h http3ServerHandler) BaseContext() context.Context {
+func (h *http3ServerHandler) BaseContext() context.Context {
 	return h.baseCtx
 }
 
 // ListenErrHook should be called by an HTTP/3 server implementation to
 // propagate any error it encounters when trying to listen, if any, to
 // net/http.
-func (h http3ServerHandler) ListenErrHook(err error) {
+func (h *http3ServerHandler) ListenErrHook(err error) {
 	h.errc <- err
+}
+
+// ShutdownContext gives an HTTP/3 server implementation the context that is
+// used when [Server.Shutdown] is called. This allows an HTTP/3 server
+// implementation to know how long it can take to gracefully shutdown in the
+// function it registers with [Server.RegisterOnShutdown]. Callers must not use
+// this method for any other purpose.
+func (h *http3ServerHandler) ShutdownContext() context.Context {
+	return h.shutdownCtx
 }
 
 // ListenAndServeTLS listens on the TCP network address s.Addr and
@@ -3795,12 +3885,15 @@ func (s *Server) ListenAndServeTLS(certFile, keyFile string) error {
 			return err
 		}
 		errc := make(chan error, 1)
-		go fn(s, nil, http3ServerHandler{
+		s.mu.Lock()
+		s.h3 = &http3ServerHandler{
 			handler:   serverHandler{s},
 			tlsConfig: config,
 			baseCtx:   context.WithValue(context.Background(), ServerContextKey, s),
 			errc:      errc,
-		})
+		}
+		s.mu.Unlock()
+		go fn(s, nil, s.h3)
 		if err := <-errc; err != nil {
 			return err
 		}

@@ -222,10 +222,10 @@ func main() {
 			throw("_cgo_pthread_key_created missing")
 		}
 
-		if _cgo_thread_start == nil {
-			throw("_cgo_thread_start missing")
-		}
 		if GOOS != "windows" {
+			if _cgo_thread_start == nil {
+				throw("_cgo_thread_start missing")
+			}
 			if _cgo_setenv == nil {
 				throw("_cgo_setenv missing")
 			}
@@ -782,6 +782,7 @@ func cpuinit(env string) {
 	case "loong64":
 		loong64HasLAMCAS = cpu.Loong64.HasLAMCAS
 		loong64HasLAM_BH = cpu.Loong64.HasLAM_BH
+		loong64HasDBAR_HINTS = cpu.Loong64.HasDBAR_HINTS
 		loong64HasLSX = cpu.Loong64.HasLSX
 
 	case "riscv64":
@@ -2913,11 +2914,8 @@ func newm(fn func(), pp *p, id int64) {
 }
 
 func newm1(mp *m) {
-	if iscgo {
+	if iscgo && _cgo_thread_start != nil {
 		var ts cgothreadstart
-		if _cgo_thread_start == nil {
-			throw("_cgo_thread_start missing")
-		}
 		ts.g.set(mp.g0)
 		ts.tls = (*uint64)(unsafe.Pointer(&mp.tls[0]))
 		ts.fn = unsafe.Pointer(abi.FuncPCABI0(mstart))

@@ -1824,6 +1824,28 @@ var nameConstraintsTests = []nameConstraintsTest{
 			sans: []string{"dns:*.bar.example.com"},
 		},
 	},
+	{
+		name: "subdomain exclusion blocks uppercase wildcard",
+		roots: []constraintsSpec{{
+			bad: []string{"dns:sub.example.com"},
+		}},
+		intermediates: [][]constraintsSpec{{{}}},
+		leaf: leafSpec{
+			sans: []string{"dns:*.EXAMPLE.COM"},
+		},
+		expectedError: "\"*.EXAMPLE.COM\" is excluded by constraint \"sub.example.com\"",
+	},
+	{
+		name: "uppercase subdomain exclusion blocks lowercase wildcard",
+		roots: []constraintsSpec{{
+			bad: []string{"dns:SUB.EXAMPLE.COM"},
+		}},
+		intermediates: [][]constraintsSpec{{{}}},
+		leaf: leafSpec{
+			sans: []string{"dns:*.example.com"},
+		},
+		expectedError: "\"*.example.com\" is excluded by constraint \"sub.example.com\"",
+	},
 }
 
 func makeConstraintsCACert(constraints constraintsSpec, name string, key *ecdsa.PrivateKey, parent *Certificate, parentKey *ecdsa.PrivateKey) (*Certificate, error) {
@@ -2277,6 +2299,7 @@ var rfc2821Tests = []struct {
 	{".foo.bar@example.com", "", ""},
 	{"foo.bar.@example.com", "", ""},
 	{"|{}?'@example.com", "|{}?'", "example.com"},
+	{"a@b@c.com", "", ""},
 
 	// Examples from RFC 3696
 	{"Abc\\@def@example.com", "Abc@def", "example.com"},

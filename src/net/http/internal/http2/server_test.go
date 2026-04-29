@@ -119,7 +119,7 @@ func (w twriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func newTestServer(t testing.TB, handler http.HandlerFunc, opts ...interface{}) *httptest.Server {
+func newTestServer(t testing.TB, handler http.HandlerFunc, opts ...any) *httptest.Server {
 	t.Helper()
 	if handler == nil {
 		handler = func(w http.ResponseWriter, req *http.Request) {}
@@ -173,7 +173,7 @@ var optQuiet = func(server *http.Server) {
 	server.ErrorLog = log.New(io.Discard, "", 0)
 }
 
-func newServerTester(t testing.TB, handler http.HandlerFunc, opts ...interface{}) *serverTester {
+func newServerTester(t testing.TB, handler http.HandlerFunc, opts ...any) *serverTester {
 	t.Helper()
 
 	h1server := &http.Server{}
@@ -436,7 +436,7 @@ func (st *serverTester) greetAndCheckSettings(checkSetting func(s Setting) error
 	var gotSettingsAck bool
 	var gotWindowUpdate bool
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		f := st.readFrame()
 		if f == nil {
 			st.t.Fatal("wanted a settings ACK and window update, got none")
@@ -1218,7 +1218,7 @@ func testServer_MaxQueuedControlFrames(t testing.TB) {
 	// Send maxQueuedControlFrames pings, plus a few extra
 	// to account for ones that enter the server's write buffer.
 	const extraPings = 2
-	for i := 0; i < MaxQueuedControlFrames+extraPings; i++ {
+	for range MaxQueuedControlFrames + extraPings {
 		pingData := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
 		st.fr.WritePing(false, pingData)
 	}
@@ -1230,7 +1230,7 @@ func testServer_MaxQueuedControlFrames(t testing.TB) {
 
 	st.advance(GoAwayTimeout)
 	// Some frames may have persisted in the server's buffers.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		if st.readFrame() == nil {
 			break
 		}
@@ -1925,7 +1925,6 @@ func TestServerRejectsContentLengthWithSignNewRequests(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		synctestSubtest(t, tt.name, func(t testing.TB) {
 			writeReq := func(st *serverTester) {
 				st.writeHeaders(HeadersFrameParam{
@@ -2386,18 +2385,7 @@ func TestServer_Rejects_Too_Many_Streams(t *testing.T) {
 	synctestTest(t, testServer_Rejects_Too_Many_Streams)
 }
 func testServer_Rejects_Too_Many_Streams(t testing.TB) {
-	inHandler := make(chan uint32)
-	leaveHandler := make(chan bool)
-	st := newServerTester(t, func(w http.ResponseWriter, r *http.Request) {
-		var streamID uint32
-		if _, err := fmt.Sscanf(r.URL.Path, "/%d", &streamID); err != nil {
-			t.Errorf("parsing %q: %v", r.URL.Path, err)
-		}
-		inHandler <- streamID
-		<-leaveHandler
-	})
-	defer st.Close()
-
+	st := newServerTester(t, nil)
 	st.greet()
 	nextStreamID := uint32(1)
 	streamID := func() uint32 {
@@ -2414,15 +2402,11 @@ func testServer_Rejects_Too_Many_Streams(t testing.TB) {
 			EndHeaders: true,
 		})
 	}
-	for i := 0; i < DefaultMaxStreams; i++ {
+	var calls []*serverHandlerCall
+	for range DefaultMaxStreams {
 		sendReq(streamID())
-		<-inHandler
+		calls = append(calls, st.nextHandlerCall())
 	}
-	defer func() {
-		for i := 0; i < DefaultMaxStreams; i++ {
-			leaveHandler <- true
-		}
-	}()
 
 	// And this one should cross the limit:
 	// (It's also sent as a CONTINUATION, to verify we still track the decoder context,
@@ -2443,7 +2427,7 @@ func testServer_Rejects_Too_Many_Streams(t testing.TB) {
 	st.wantRSTStream(rejectID, ErrCodeProtocol)
 
 	// But let a handler finish:
-	leaveHandler <- true
+	calls[0].exit()
 	st.sync()
 	st.wantHeaders(wantHeader{
 		streamID:  1,
@@ -2453,8 +2437,9 @@ func testServer_Rejects_Too_Many_Streams(t testing.TB) {
 	// And now another stream should be able to start:
 	goodID := streamID()
 	sendReq(goodID)
-	if got := <-inHandler; got != goodID {
-		t.Errorf("Got stream %d; want %d", got, goodID)
+	call := st.nextHandlerCall()
+	if got, want := call.req.URL.Path, fmt.Sprintf("/%d", goodID); got != want {
+		t.Errorf("Got request for %q, want %q", got, want)
 	}
 }
 
@@ -2465,7 +2450,7 @@ func TestServer_Response_ManyHeaders_With_Continuation(t *testing.T) {
 func testServer_Response_ManyHeaders_With_Continuation(t testing.TB) {
 	testServerResponse(t, func(w http.ResponseWriter, r *http.Request) error {
 		h := w.Header()
-		for i := 0; i < 5000; i++ {
+		for i := range 5000 {
 			h.Set(fmt.Sprintf("x-header-%d", i), fmt.Sprintf("x-value-%d", i))
 		}
 		return nil
@@ -2540,10 +2525,10 @@ func testServer_NoCrash_HandlerClose_Then_ClientClose(t testing.TB) {
 		// previously.
 		var (
 			panMu    sync.Mutex
-			panicVal interface{}
+			panicVal any
 		)
 
-		SetTestHookOnPanic(t, func(sc *ServerConn, pv interface{}) bool {
+		SetTestHookOnPanic(t, func(sc *ServerConn, pv any) bool {
 			panMu.Lock()
 			panicVal = pv
 			panMu.Unlock()
@@ -3558,7 +3543,7 @@ func testIssue20704Race(t testing.TB) {
 	)
 
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		for i := 0; i < itemCount; i++ {
+		for range itemCount {
 			_, err := w.Write(make([]byte, itemSize))
 			if err != nil {
 				return
@@ -3573,7 +3558,7 @@ func testIssue20704Race(t testing.TB) {
 	defer tr.CloseIdleConnections()
 	cl := &http.Client{Transport: tr}
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		resp, err := cl.Get(ts.URL)
 		if err != nil {
 			t.Fatal(err)
@@ -3806,7 +3791,7 @@ func TestContentEncodingNoSniffing(t *testing.T) {
 		// setting Content-Encoding as an interface instead of a string
 		// directly, so as to differentiate between 3 states:
 		//    unset, empty string "" and set string "foo/bar".
-		contentEncoding interface{}
+		contentEncoding any
 		wantContentType string
 	}
 
@@ -4285,7 +4270,7 @@ func testServerMaxHandlerGoroutines(t testing.TB) {
 	// Reset them all, but only after the handler goroutines have started.
 	var stops []chan bool
 	streamID := uint32(1)
-	for i := 0; i < maxHandlers; i++ {
+	for range maxHandlers {
 		st.writeHeaders(HeadersFrameParam{
 			StreamID:      streamID,
 			BlockFragment: st.encodeHeader(),
@@ -4308,7 +4293,7 @@ func testServerMaxHandlerGoroutines(t testing.TB) {
 	streamID += 2
 
 	// Start another two requests. Don't reset these.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		st.writeHeaders(HeadersFrameParam{
 			StreamID:      streamID,
 			BlockFragment: st.encodeHeader(),
@@ -4336,7 +4321,7 @@ func testServerMaxHandlerGoroutines(t testing.TB) {
 
 	// Make a bunch more requests.
 	// Eventually, the server tells us to go away.
-	for i := 0; i < 5*maxHandlers; i++ {
+	for range 5 * maxHandlers {
 		st.writeHeaders(HeadersFrameParam{
 			StreamID:      streamID,
 			BlockFragment: st.encodeHeader(),
@@ -4372,7 +4357,7 @@ func testServerContinuationFlood(t testing.TB) {
 		BlockFragment: st.encodeHeader(),
 		EndStream:     true,
 	})
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		st.fr.WriteContinuation(1, false, st.encodeHeaderRaw(
 			fmt.Sprintf("x-%v", i), "1234567890",
 		))
@@ -4525,7 +4510,7 @@ func testServerWriteByteTimeout(t testing.TB) {
 	})
 
 	// Read a few bytes, staying just under WriteByteTimeout.
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		st.advance(timeout - 1)
 		if n, err := st.cc.Read(make([]byte, 1)); n != 1 || err != nil {
 			t.Fatalf("read %v: %v, %v; want 1, nil", i, n, err)
@@ -4919,6 +4904,57 @@ func testServerRFC9218PriorityAware(t testing.TB) {
 	}
 	if !slices.Equal(slices.Compact(half), half) {
 		t.Errorf("want stream to be processed one-by-one to completion when aware of priority, got: %v", streamFrameOrder)
+	}
+}
+
+func TestServerInvalidPathHeader(t *testing.T) {
+	synctestTest(t, testServerInvalidPathHeader)
+}
+func testServerInvalidPathHeader(t testing.TB) {
+	for _, path := range []string{
+		"",
+		"\x00",
+		"https://example.com/",
+	} {
+		testServerRejectsStream(t, ErrCodeProtocol, func(st *serverTester) {
+			st.fr.AllowIllegalWrites = true
+			st.writeHeaders(HeadersFrameParam{
+				StreamID: 1,
+				BlockFragment: st.encodeHeader(
+					":path", path,
+				),
+				EndStream:  true,
+				EndHeaders: true,
+			})
+		})
+	}
+}
+
+func TestServerPathInitialSlashes(t *testing.T) {
+	synctestTest(t, testServerPathInitialSlashes)
+}
+func testServerPathInitialSlashes(t testing.TB) {
+	st := newServerTester(t, nil)
+	st.greet()
+
+	// This path should be passed through unchanged,
+	// and not interpreted as a protocol-relative URL or have initial /s stripped.
+	const path = "//narf.com/path"
+	st.writeHeaders(HeadersFrameParam{
+		StreamID: 1,
+		BlockFragment: st.encodeHeader(
+			":path", path,
+		),
+		EndStream:  true,
+		EndHeaders: true,
+	})
+
+	call := st.nextHandlerCall()
+	if got, want := call.req.URL.Host, ""; got != want {
+		t.Errorf("got req.URL.Host %q, want %q", got, want)
+	}
+	if got, want := call.req.URL.Path, path; got != want {
+		t.Errorf("got req.URL.Path %q, want %q", got, want)
 	}
 }
 

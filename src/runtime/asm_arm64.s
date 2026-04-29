@@ -41,35 +41,15 @@ TEXT _rt0_arm64_lib(SB),NOSPLIT,$184
 	MOVD	R0, _rt0_arm64_lib_argc<>(SB)
 	MOVD	R1, _rt0_arm64_lib_argv<>(SB)
 
-	// Synchronous initialization.
-	MOVD	$runtime·libpreinit(SB), R4
+	MOVD	$runtime·libInit(SB), R4
 	BL	(R4)
 
-	// Create a new thread to do the runtime initialization and return.
-	MOVD	_cgo_sys_thread_create(SB), R4
-	CBZ	R4, nocgo
-	MOVD	$_rt0_arm64_lib_go(SB), R0
-	MOVD	$0, R1
-	SUB	$16, RSP		// reserve 16 bytes for sp-8 where fp may be saved.
-	BL	(R4)
-	ADD	$16, RSP
-	B	restore
-
-nocgo:
-	MOVD	$0x800000, R0                     // stacksize = 8192KB
-	MOVD	$_rt0_arm64_lib_go(SB), R1
-	MOVD	R0, 8(RSP)
-	MOVD	R1, 16(RSP)
-	MOVD	$runtime·newosproc0(SB),R4
-	BL	(R4)
-
-restore:
 	// Restore callee-save registers.
 	RESTORE_R19_TO_R28(24)
 	RESTORE_F8_TO_F15(104)
 	RET
 
-TEXT _rt0_arm64_lib_go(SB),NOSPLIT,$0
+TEXT runtime·rt0_lib_go<ABIInternal>(SB),NOSPLIT,$0
 	MOVD	_rt0_arm64_lib_argc<>(SB), R0
 	MOVD	_rt0_arm64_lib_argv<>(SB), R1
 	MOVD	$runtime·rt0_go(SB),R4
@@ -702,8 +682,8 @@ TEXT runtime·memhash32<ABIInternal>(SB),NOSPLIT|NOFRAME,$0-24
 
 	VEOR	V0.B16, V0.B16, V0.B16
 	VLD1	(R3), [V2.B16]
-	VLD1	(R0), V0.S[1]
-	VMOV	R1, V0.S[0]
+	VLD1	(R0), V0.S[2]
+	VMOV	R1, V0.D[0]
 
 	AESE	V2.B16, V0.B16
 	AESMC	V0.B16, V0.B16
@@ -1244,10 +1224,6 @@ nosave:
 	// This code is like the above sequence but without saving/restoring g
 	// and without worrying about the stack moving out from under us
 	// (because we're on a system stack, not a goroutine stack).
-	// The above code could be used directly if already on a system stack,
-	// but then the only path through this code would be a rare case on Solaris.
-	// Using this code for all "already on system stack" calls exercises it more,
-	// which should help keep it correct.
 	MOVD	fn+0(FP), R1
 	MOVD	arg+8(FP), R0
 	MOVD	RSP, R2
@@ -1344,23 +1320,24 @@ havem:
 	MOVD	(g_sched+gobuf_sp)(g), R4 // prepare stack as R4
 	MOVD	(g_sched+gobuf_pc)(g), R5
 	MOVD	R5, -48(R4)
-	MOVD	(g_sched+gobuf_bp)(g), R5
-	MOVD	R5, -56(R4)
+	MOVD	(g_sched+gobuf_bp)(g), R6
+	MOVD	R6, -56(R4)
+
 	// Gather our arguments into registers.
-	MOVD	fn+0(FP), R1
-	MOVD	frame+8(FP), R2
-	MOVD	ctxt+16(FP), R3
-	MOVD	$-48(R4), R0 // maintain 16-byte SP alignment
-	MOVD	R0, RSP	// switch stack
-	MOVD	R1, 8(RSP)
-	MOVD	R2, 16(RSP)
-	MOVD	R3, 24(RSP)
-	MOVD	$runtime·cgocallbackg(SB), R0
-	CALL	(R0) // indirect call to bypass nosplit check. We're on a different stack now.
+	MOVD	fn+0(FP), R0
+	MOVD	frame+8(FP), R1
+	MOVD	ctxt+16(FP), R2
+
+	SUB	$48, R4		// Allocate the same frame size on the g stack
+	MOVD	R4, RSP		// switch stack
+	MOVD	$runtime·cgocallbackg<ABIInternal>(SB), R11
+	CALL	(R11) // indirect call to bypass nosplit check. We're on a different stack now.
 
 	// Restore g->sched (== m->curg->sched) from saved values.
 	MOVD	0(RSP), R5
 	MOVD	R5, (g_sched+gobuf_pc)(g)
+	MOVD	-8(RSP), R6
+	MOVD	R6, (g_sched+gobuf_bp)(g)
 	MOVD	RSP, R4
 	ADD	$48, R4, R4
 	MOVD	R4, (g_sched+gobuf_sp)(g)

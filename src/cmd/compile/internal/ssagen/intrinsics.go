@@ -302,7 +302,7 @@ func initIntrinsics(cfg *intrinsicBuildConfig) {
 			s.vars[memVar] = s.newValue3(ssa.OpAtomicStore8, types.TypeMem, args[0], args[1], s.mem())
 			return nil
 		},
-		sys.AMD64, sys.ARM64, sys.MIPS, sys.MIPS64, sys.PPC64, sys.RISCV64, sys.S390X)
+		sys.AMD64, sys.ARM64, sys.Loong64, sys.MIPS, sys.MIPS64, sys.PPC64, sys.RISCV64, sys.S390X)
 	addF("internal/runtime/atomic", "Store64",
 		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			s.vars[memVar] = s.newValue3(ssa.OpAtomicStore64, types.TypeMem, args[0], args[1], s.mem())
@@ -331,7 +331,7 @@ func initIntrinsics(cfg *intrinsicBuildConfig) {
 	makeAtomicStoreGuardedIntrinsicLoong64 := func(op0, op1 ssa.Op, typ types.Kind, emit atomicOpEmitter) intrinsicBuilder {
 		return func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
 			// Target Atomic feature is identified by dynamic detection
-			addr := s.entryNewValue1A(ssa.OpAddr, types.Types[types.TBOOL].PtrTo(), ir.Syms.Loong64HasLAM_BH, s.sb)
+			addr := s.entryNewValue1A(ssa.OpAddr, types.Types[types.TBOOL].PtrTo(), ir.Syms.Loong64HasDBAR_HINTS, s.sb)
 			v := s.load(types.Types[types.TBOOL], addr)
 			b := s.endBlock()
 			b.Kind = ssa.BlockIf
@@ -343,14 +343,14 @@ func initIntrinsics(cfg *intrinsicBuildConfig) {
 			b.AddEdgeTo(bFalse)
 			b.Likely = ssa.BranchLikely
 
-			// We have atomic instructions - use it directly.
+			// most loong64 machines support the finer-grained DBAR hints
 			s.startBlock(bTrue)
-			emit(s, n, args, op1, typ, false)
+			emit(s, n, args, op0, typ, false)
 			s.endBlock().AddEdgeTo(bEnd)
 
 			// Use original instruction sequence.
 			s.startBlock(bFalse)
-			emit(s, n, args, op0, typ, false)
+			emit(s, n, args, op1, typ, false)
 			s.endBlock().AddEdgeTo(bEnd)
 
 			// Merge results.
@@ -368,20 +368,11 @@ func initIntrinsics(cfg *intrinsicBuildConfig) {
 		}
 	}
 
-	addF("internal/runtime/atomic", "Store8",
-		makeAtomicStoreGuardedIntrinsicLoong64(ssa.OpAtomicStore8, ssa.OpAtomicStore8Variant, types.TUINT8, atomicStoreEmitterLoong64),
-		sys.Loong64)
 	addF("internal/runtime/atomic", "Store",
-		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
-			s.vars[memVar] = s.newValue3(ssa.OpAtomicStore32Variant, types.TypeMem, args[0], args[1], s.mem())
-			return nil
-		},
+		makeAtomicStoreGuardedIntrinsicLoong64(ssa.OpAtomicStore32, ssa.OpAtomicStore32Variant, types.TUINT8, atomicStoreEmitterLoong64),
 		sys.Loong64)
 	addF("internal/runtime/atomic", "Store64",
-		func(s *state, n *ir.CallExpr, args []*ssa.Value) *ssa.Value {
-			s.vars[memVar] = s.newValue3(ssa.OpAtomicStore64Variant, types.TypeMem, args[0], args[1], s.mem())
-			return nil
-		},
+		makeAtomicStoreGuardedIntrinsicLoong64(ssa.OpAtomicStore64, ssa.OpAtomicStore64Variant, types.TUINT8, atomicStoreEmitterLoong64),
 		sys.Loong64)
 
 	addF("internal/runtime/atomic", "Xchg8",
@@ -707,9 +698,7 @@ func initIntrinsics(cfg *intrinsicBuildConfig) {
 	alias("internal/runtime/atomic", "LoadAcq", "internal/runtime/atomic", "Load", lwatomics...)
 	alias("internal/runtime/atomic", "LoadAcq64", "internal/runtime/atomic", "Load64", lwatomics...)
 	alias("internal/runtime/atomic", "LoadAcquintptr", "internal/runtime/atomic", "LoadAcq", p4...)
-	alias("sync", "runtime_LoadAcquintptr", "internal/runtime/atomic", "LoadAcq", p4...) // linknamed
 	alias("internal/runtime/atomic", "LoadAcquintptr", "internal/runtime/atomic", "LoadAcq64", p8...)
-	alias("sync", "runtime_LoadAcquintptr", "internal/runtime/atomic", "LoadAcq64", p8...) // linknamed
 
 	// Aliases for atomic store operations
 	alias("internal/runtime/atomic", "Storeint32", "internal/runtime/atomic", "Store", all...)
@@ -719,9 +708,7 @@ func initIntrinsics(cfg *intrinsicBuildConfig) {
 	alias("internal/runtime/atomic", "StoreRel", "internal/runtime/atomic", "Store", lwatomics...)
 	alias("internal/runtime/atomic", "StoreRel64", "internal/runtime/atomic", "Store64", lwatomics...)
 	alias("internal/runtime/atomic", "StoreReluintptr", "internal/runtime/atomic", "StoreRel", p4...)
-	alias("sync", "runtime_StoreReluintptr", "internal/runtime/atomic", "StoreRel", p4...) // linknamed
 	alias("internal/runtime/atomic", "StoreReluintptr", "internal/runtime/atomic", "StoreRel64", p8...)
-	alias("sync", "runtime_StoreReluintptr", "internal/runtime/atomic", "StoreRel64", p8...) // linknamed
 
 	// Aliases for atomic swap operations
 	alias("internal/runtime/atomic", "Xchgint32", "internal/runtime/atomic", "Xchg", all...)

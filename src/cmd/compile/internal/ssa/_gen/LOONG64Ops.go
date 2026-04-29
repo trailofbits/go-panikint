@@ -197,17 +197,17 @@ func init() {
 		{name: "SUBV", argLength: 2, reg: gp21, asm: "SUBVU"},                         // arg0 - arg1
 		{name: "SUBVconst", argLength: 1, reg: gp11, asm: "SUBVU", aux: "Int64"},      // arg0 - auxInt
 
-		{name: "MULV", argLength: 2, reg: gp21, asm: "MULV", commutative: true, typ: "Int64"},      // arg0 * arg1
-		{name: "MULHV", argLength: 2, reg: gp21, asm: "MULHV", commutative: true, typ: "Int64"},    // (arg0 * arg1) >> 64, signed
-		{name: "MULHVU", argLength: 2, reg: gp21, asm: "MULHVU", commutative: true, typ: "UInt64"}, // (arg0 * arg1) >> 64, unsigned
-		{name: "MULH", argLength: 2, reg: gp21, asm: "MULH", commutative: true, typ: "Int32"},      // (arg0 * arg1) >> 32, signed
-		{name: "MULHU", argLength: 2, reg: gp21, asm: "MULHU", commutative: true, typ: "UInt32"},   // (arg0 * arg1) >> 32, unsigned
-		{name: "DIVV", argLength: 2, reg: gp21, asm: "DIVV", typ: "Int64"},                         // arg0 / arg1, signed
-		{name: "DIVVU", argLength: 2, reg: gp21, asm: "DIVVU", typ: "UInt64"},                      // arg0 / arg1, unsigned
-		{name: "REMV", argLength: 2, reg: gp21, asm: "REMV", typ: "Int64"},                         // arg0 / arg1, signed
-		{name: "REMVU", argLength: 2, reg: gp21, asm: "REMVU", typ: "UInt64"},                      // arg0 / arg1, unsigned
-		{name: "MULWVW", argLength: 2, reg: gp21, asm: "MULWVW", commutative: true},                // arg0 * arg1, signed, 32-bit mult results in 64-bit
-		{name: "MULWVWU", argLength: 2, reg: gp21, asm: "MULWVWU", commutative: true},              // arg0 * arg1, unsigned, 32-bit mult results in 64-bit
+		{name: "MULV", argLength: 2, reg: gp21, asm: "MULV", commutative: true, typ: "Int64"},       // arg0 * arg1
+		{name: "MULHV", argLength: 2, reg: gp21, asm: "MULHV", commutative: true, typ: "Int64"},     // (arg0 * arg1) >> 64, signed
+		{name: "MULHVU", argLength: 2, reg: gp21, asm: "MULHVU", commutative: true, typ: "UInt64"},  // (arg0 * arg1) >> 64, unsigned
+		{name: "MULH", argLength: 2, reg: gp21, asm: "MULH", commutative: true, typ: "Int32"},       // (arg0 * arg1) >> 32, signed
+		{name: "MULHU", argLength: 2, reg: gp21, asm: "MULHU", commutative: true, typ: "UInt32"},    // (arg0 * arg1) >> 32, unsigned
+		{name: "DIVV", argLength: 2, reg: gp21, asm: "DIVV", typ: "Int64", hasSideEffects: true},    // arg0 / arg1, signed
+		{name: "DIVVU", argLength: 2, reg: gp21, asm: "DIVVU", typ: "UInt64", hasSideEffects: true}, // arg0 / arg1, unsigned
+		{name: "REMV", argLength: 2, reg: gp21, asm: "REMV", typ: "Int64", hasSideEffects: true},    // arg0 / arg1, signed
+		{name: "REMVU", argLength: 2, reg: gp21, asm: "REMVU", typ: "UInt64", hasSideEffects: true}, // arg0 / arg1, unsigned
+		{name: "MULWVW", argLength: 2, reg: gp21, asm: "MULWVW", commutative: true},                 // arg0 * arg1, signed, 32-bit mult results in 64-bit
+		{name: "MULWVWU", argLength: 2, reg: gp21, asm: "MULWVWU", commutative: true},               // arg0 * arg1, unsigned, 32-bit mult results in 64-bit
 
 		{name: "ADDF", argLength: 2, reg: fp21, asm: "ADDF", commutative: true}, // arg0 + arg1
 		{name: "ADDD", argLength: 2, reg: fp21, asm: "ADDD", commutative: true}, // arg0 + arg1
@@ -410,8 +410,8 @@ func init() {
 			aux:       "Int64",
 			argLength: 3,
 			reg: regInfo{
-				inputs:   []regMask{gp &^ buildReg("R20"), gp &^ buildReg("R20")},
-				clobbers: buildReg("R20"),
+				inputs:   []regMask{gp &^ buildReg("R23"), gp &^ buildReg("R23")},
+				clobbers: buildReg("R23"),
 			},
 			faultOnNilArg0: true,
 			faultOnNilArg1: true,
@@ -428,8 +428,8 @@ func init() {
 			aux:       "Int64",
 			argLength: 3,
 			reg: regInfo{
-				inputs:       []regMask{gp &^ buildReg("R20 R21"), gp &^ buildReg("R20 R21")},
-				clobbers:     buildReg("R20 R21"),
+				inputs:       []regMask{gp &^ buildReg("R23 R24"), gp &^ buildReg("R23 R24")},
+				clobbers:     buildReg("R23 R24"),
 				clobbersArg0: true,
 				clobbersArg1: true,
 			},

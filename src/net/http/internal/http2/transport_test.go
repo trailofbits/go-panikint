@@ -123,7 +123,7 @@ func TestIdleConnTimeout(t *testing.T) {
 				tr.IdleConnTimeout = test.idleConnTimeout
 			})
 			var tc *testClientConn
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				req, _ := http.NewRequest("GET", "https://dummy.tld/", nil)
 				rt := tt.roundTrip(req)
 
@@ -413,7 +413,7 @@ func testTransportGetGotConnHooks(t *testing.T, useClient bool) {
 		getConns int32
 		gotConns int32
 	)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		trace := &httptrace.ClientTrace{
 			GetConn: func(hostport string) {
 				atomic.AddInt32(&getConns, 1)
@@ -1373,7 +1373,7 @@ func testTransportChecksResponseHeaderListSize(t testing.TB) {
 
 	hdr := []string{":status", "200"}
 	large := strings.Repeat("a", 1<<10)
-	for i := 0; i < 5042; i++ {
+	for range 5042 {
 		hdr = append(hdr, large, large)
 	}
 	hbf := tc.makeHeaderBlockFragment(hdr...)
@@ -1571,7 +1571,7 @@ func TestTransportDisableKeepAlives_Concurrency(t *testing.T) {
 	c := &http.Client{Transport: tr}
 	var reqs sync.WaitGroup
 	const N = 20
-	for i := 0; i < N; i++ {
+	for i := range N {
 		reqs.Add(1)
 		if i == N-1 {
 			// For the final request, try to make all the
@@ -1877,7 +1877,6 @@ func TestTransportRejectsContentLengthWithSign(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Length", tt.cl[0])
@@ -2464,7 +2463,7 @@ func testTransportBodyDoubleEndStream(t testing.TB) {
 
 	tr := newTransport(t)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		req, _ := http.NewRequest("POST", ts.URL, byteAndEOFReader('a'))
 		req.ContentLength = 1
 		res, err := tr.RoundTrip(req)
@@ -2658,7 +2657,7 @@ func TestTransportCancelDataResponseRace(t *testing.T) {
 			io.WriteString(w, msg)
 			return
 		}
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			io.WriteString(w, "Some data.")
 			w.(http.Flusher).Flush()
 			if i == 2 {
@@ -2795,7 +2794,7 @@ func testTransportPingWhenReadingMultiplePings(t testing.TB) {
 		),
 	})
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		// No ping yet...
 		time.Sleep(999 * time.Millisecond)
 		if f := tc.readFrame(); f != nil {
@@ -3157,7 +3156,7 @@ func TestTransportRequestsLowServerLimit(t *testing.T) {
 	}
 
 	const reqCount = 3
-	for i := 0; i < reqCount; i++ {
+	for range reqCount {
 		req, err := http.NewRequest("GET", ts.URL, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -3196,7 +3195,7 @@ func testTransportRequestsStallAtServerLimit(t *testing.T) {
 	// Start maxConcurrent+2 requests.
 	// The server does not respond to any of them yet.
 	var rts []*testRoundTrip
-	for k := 0; k < maxConcurrent+2; k++ {
+	for k := range maxConcurrent + 2 {
 		req, _ := http.NewRequest("GET", fmt.Sprintf("https://dummy.tld/%d", k), nil)
 		if k == maxConcurrent {
 			req.Cancel = cancelClientRequest
@@ -3378,7 +3377,7 @@ func benchSimpleRoundTrip(b *testing.B, nReqHeaders, nResHeader int) {
 	b.ReportAllocs()
 	ts := newTestServer(b,
 		func(w http.ResponseWriter, r *http.Request) {
-			for i := 0; i < nResHeader; i++ {
+			for i := range nResHeader {
 				name := fmt.Sprint("A-", i)
 				w.Header().Set(name, "*")
 			}
@@ -3393,7 +3392,7 @@ func benchSimpleRoundTrip(b *testing.B, nReqHeaders, nResHeader int) {
 		b.Fatal(err)
 	}
 
-	for i := 0; i < nReqHeaders; i++ {
+	for i := range nReqHeaders {
 		name := fmt.Sprint("A-", i)
 		req.Header.Set(name, "*")
 	}
@@ -3496,7 +3495,7 @@ func benchLargeDownloadRoundTrip(b *testing.B, frameSize uint32) {
 			w.Header().Set("Content-Length", strconv.Itoa(transferSize))
 			w.Header().Set("Content-Transfer-Encoding", "binary")
 			var data [1024 * 1024]byte
-			for i := 0; i < transferSize/(1024*1024); i++ {
+			for range transferSize / (1024 * 1024) {
 				w.Write(data[:])
 			}
 		}, optQuiet,
@@ -3922,7 +3921,7 @@ func TestTransportBodyRewindRace(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(clients)
-	for i := 0; i < clients; i++ {
+	for range clients {
 		req, err := http.NewRequest("POST", ts.URL, bytes.NewBufferString("abcdef"))
 		if err != nil {
 			t.Fatalf("unexpected new request error: %v", err)
@@ -4164,10 +4163,8 @@ func TestTransportFrameBufferReuse(t *testing.T) {
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 10 {
+		wg.Go(func() {
 			req, err := http.NewRequest("POST", ts.URL, strings.NewReader(filler))
 			if err != nil {
 				t.Error(err)
@@ -4187,7 +4184,7 @@ func TestTransportFrameBufferReuse(t *testing.T) {
 			if res != nil && res.Body != nil {
 				res.Body.Close()
 			}
-		}()
+		})
 	}
 
 }
@@ -4200,141 +4197,93 @@ func TestTransportBlockingRequestWrite(t *testing.T) {
 	filler := hex.EncodeToString([]byte(randString(2048)))
 	for _, test := range []struct {
 		name string
-		req  func(url string) (*http.Request, error)
+		req  *http.Request
 	}{{
 		name: "headers",
-		req: func(url string) (*http.Request, error) {
-			req, err := http.NewRequest("POST", url, nil)
-			if err != nil {
-				return nil, err
-			}
+		req: func() *http.Request {
+			req, _ := http.NewRequest("POST", "https://dummy.tld/", nil)
 			req.Header.Set("Big", filler)
-			return req, err
-		},
+			return req
+		}(),
 	}, {
 		name: "body",
-		req: func(url string) (*http.Request, error) {
-			req, err := http.NewRequest("POST", url, strings.NewReader(filler))
-			if err != nil {
-				return nil, err
-			}
-			return req, err
-		},
+		req: func() *http.Request {
+			req, _ := http.NewRequest("POST", "https://dummy.tld/", strings.NewReader(filler))
+			return req
+		}(),
 	}, {
 		name: "trailer",
-		req: func(url string) (*http.Request, error) {
-			req, err := http.NewRequest("POST", url, strings.NewReader("body"))
-			if err != nil {
-				return nil, err
-			}
+		req: func() *http.Request {
+			req, _ := http.NewRequest("POST", "https://dummy.tld/", strings.NewReader("body"))
 			req.Trailer = make(http.Header)
 			req.Trailer.Set("Big", filler)
-			return req, err
-		},
+			return req
+		}(),
 	}} {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
-			ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-				if v := r.Header.Get("Big"); v != "" && v != filler {
-					t.Errorf("request header mismatch")
-				}
-				if v, _ := io.ReadAll(r.Body); len(v) != 0 && string(v) != "body" && string(v) != filler {
-					t.Errorf("request body mismatch\ngot:  %q\nwant: %q", string(v), filler)
-				}
-				if v := r.Trailer.Get("Big"); v != "" && v != filler {
-					t.Errorf("request trailer mismatch\ngot:  %q\nwant: %q", string(v), filler)
-				}
-			}, func(h2 *http.HTTP2Config) {
-				h2.MaxConcurrentStreams = 1
-			}, func(s *http.Server) {
-				s.Protocols = protocols("h2c")
+			synctestTest(t, func(t testing.TB) {
+				testTransportBlockingRequestWrite(t, test.req)
 			})
-
-			// This Transport creates connections that block on writes after 1024 bytes.
-			connc := make(chan *blockingWriteConn, 1)
-			connCount := 0
-			tr := newTransport(t)
-			tr.Protocols = protocols("h2c")
-			tr.Dial = func(network, addr string) (net.Conn, error) {
-				connCount++
-				c, err := net.Dial(network, addr)
-				wc := newBlockingWriteConn(c, 1024)
-				select {
-				case connc <- wc:
-				default:
-				}
-				return wc, err
-			}
-			t.Log(ts.URL)
-
-			// Request 1: A small request to ensure we read the server MaxConcurrentStreams.
-			{
-				req, err := http.NewRequest("POST", ts.URL, nil)
-				if err != nil {
-					t.Fatal(err)
-				}
-				res, err := tr.RoundTrip(req)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got, want := res.StatusCode, 200; got != want {
-					t.Errorf("StatusCode = %v; want %v", got, want)
-				}
-				if res != nil && res.Body != nil {
-					res.Body.Close()
-				}
-			}
-
-			// Request 2: A large request that blocks while being written.
-			reqc := make(chan struct{})
-			go func() {
-				defer close(reqc)
-				req, err := test.req(ts.URL)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-				res, _ := tr.RoundTrip(req)
-				if res != nil && res.Body != nil {
-					res.Body.Close()
-				}
-			}()
-			conn := <-connc
-			conn.wait() // wait for the request to block
-
-			// Request 3: A small request that is sent on a new connection, since request 2
-			// is hogging the only available stream on the previous connection.
-			{
-				req, err := http.NewRequest("POST", ts.URL, nil)
-				if err != nil {
-					t.Fatal(err)
-				}
-				res, err := tr.RoundTrip(req)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got, want := res.StatusCode, 200; got != want {
-					t.Errorf("StatusCode = %v; want %v", got, want)
-				}
-				if res != nil && res.Body != nil {
-					res.Body.Close()
-				}
-			}
-
-			// Request 2 should still be blocking at this point.
-			select {
-			case <-reqc:
-				t.Errorf("request 2 unexpectedly completed")
-			default:
-			}
-
-			conn.unblock()
-			<-reqc
-
-			if connCount != 2 {
-				t.Errorf("created %v connections, want 1", connCount)
-			}
 		})
+	}
+}
+func testTransportBlockingRequestWrite(t testing.TB, req2 *http.Request) {
+	tt := newTestTransport(t)
+
+	smallReq := func() *http.Request {
+		req, _ := http.NewRequest("GET", req2.URL.String(), nil)
+		return req
+	}
+
+	// Request 1: A small request to ensure we read the server MaxConcurrentStreams.
+	rt1 := tt.roundTrip(smallReq())
+	tc1 := tt.getConn()
+	tc1.wantFrameType(FrameSettings)
+	tc1.wantFrameType(FrameWindowUpdate)
+	tc1.wantHeaders(wantHeader{
+		streamID:  1,
+		endStream: true,
+	})
+	tc1.writeSettings(Setting{SettingMaxConcurrentStreams, 1})
+	tc1.writeHeaders(HeadersFrameParam{
+		StreamID:   1,
+		EndHeaders: true,
+		EndStream:  true,
+		BlockFragment: tc1.makeHeaderBlockFragment(
+			":status", "200",
+		),
+	})
+	rt1.wantStatus(200)
+	tc1.wantFrameType(FrameSettings) // settings ACK
+
+	// Request 2: A large request that blocks while being written.
+	tc1.netconn.SetReadBufferSize(1024)
+	rt2 := tt.roundTrip(req2)
+
+	// Request 3: A small request that is sent on a new connection, since request 2
+	// is hogging the only available stream on the previous connection.
+	rt3 := tt.roundTrip(smallReq())
+	tc2 := tt.getConn()
+	tc2.wantFrameType(FrameSettings)
+	tc2.wantFrameType(FrameWindowUpdate)
+	tc2.wantHeaders(wantHeader{
+		streamID:  1,
+		endStream: true,
+	})
+	tc2.writeSettings()
+	tc2.writeHeaders(HeadersFrameParam{
+		StreamID:   1,
+		EndHeaders: true,
+		EndStream:  true,
+		BlockFragment: tc1.makeHeaderBlockFragment(
+			":status", "200",
+		),
+	})
+	rt3.wantStatus(200)
+	tc2.wantFrameType(FrameSettings) // settings ACK
+
+	if rt2.done() {
+		t.Errorf("RoundTrip 2 is done, expect it to be still pending")
 	}
 }
 
@@ -4880,8 +4829,7 @@ func TestDialRaceResumesDial(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
 	req1 := req.WithContext(ctx1)
-	ctx2, cancel2 := context.WithCancel(context.Background())
-	defer cancel2()
+	ctx2 := t.Context()
 	req2 := req.WithContext(ctx2)
 	errCh := make(chan error)
 	go func() {
@@ -4994,7 +4942,7 @@ func TestIssue67671(t *testing.T) {
 	tr.Protocols = protocols("h2c")
 	req, _ := http.NewRequest("GET", ts.URL, nil)
 	req.Close = true
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		res, err := tr.RoundTrip(req)
 		if err != nil {
 			t.Fatal(err)
@@ -5289,7 +5237,7 @@ func testTransportConnBecomesUnresponsive(t testing.TB) {
 	// Send more requests.
 	// None receive a response.
 	// Each is canceled.
-	for i := 0; i < maxConcurrent; i++ {
+	for i := range maxConcurrent {
 		t.Logf("request %v receives no response and is canceled", i)
 		ctx, cancel := context.WithCancel(context.Background())
 		req := Must(http.NewRequestWithContext(ctx, "GET", "https://dummy.tld/", nil))
@@ -5478,6 +5426,19 @@ func testTransportTLSNextProtoConnImmediateFailureUnused(t testing.TB) {
 	tc2.wantFrameType(FrameSettings)
 	tc2.wantFrameType(FrameWindowUpdate)
 	tc2.wantFrameType(FrameHeaders)
+}
+
+func TestTransportDoNotHangOnZeroMaxFrameSize(t *testing.T) {
+	synctestTest(t, testTransportDoNotHangOnZeroMaxFrameSize)
+}
+func testTransportDoNotHangOnZeroMaxFrameSize(t testing.TB) {
+	tc := newTestClientConn(t)
+	tc.writeSettings(Setting{ID: SettingMaxFrameSize, Val: 0})
+	tc.wantFrameType(FrameSettings)
+
+	req, _ := http.NewRequest("POST", "https://dummy.tld/", strings.NewReader("body"))
+	tc.roundTrip(req)
+	// Previously, https://go.dev/issue/78476 caused an infinite hang here.
 }
 
 func TestExtendedConnectClientWithServerSupport(t *testing.T) {

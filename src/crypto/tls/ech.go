@@ -184,6 +184,11 @@ func pickECHConfig(list []echConfig) (*echConfig, hpke.PublicKey, hpke.KDF, hpke
 			if err != nil {
 				continue
 			}
+			// 0xFFFF is an export-only AEAD that cannot seal/open, making
+			// it an invalid choice for encrypting ClientHelloInner.
+			if cs.AEADID == 0xFFFF {
+				continue
+			}
 			aead, err := hpke.NewAEAD(cs.AEADID)
 			if err != nil {
 				continue
@@ -207,7 +212,7 @@ func encodeInnerClientHello(inner *clientHelloMsg, maxNameLength int) ([]byte, e
 	} else {
 		paddingLen = maxNameLength + 9
 	}
-	paddingLen = 31 - ((len(h) + paddingLen - 1) % 32)
+	paddingLen += 31 - ((len(h) + paddingLen - 1) % 32)
 
 	return append(h, make([]byte, paddingLen)...), nil
 }

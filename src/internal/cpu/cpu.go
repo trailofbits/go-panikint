@@ -92,13 +92,14 @@ var ARM64 struct {
 // The booleans in Loong64 contain the correspondingly named cpu feature bit.
 // The struct is padded to avoid false sharing.
 var Loong64 struct {
-	_         CacheLinePad
-	HasLSX    bool // support 128-bit vector extension
-	HasLASX   bool // support 256-bit vector extension
-	HasCRC32  bool // support CRC instruction
-	HasLAMCAS bool // support AMCAS[_DB].{B/H/W/D}
-	HasLAM_BH bool // support AM{SWAP/ADD}[_DB].{B/H} instruction
-	_         CacheLinePad
+	_             CacheLinePad
+	HasLSX        bool // support 128-bit vector extension
+	HasLASX       bool // support 256-bit vector extension
+	HasCRC32      bool // support CRC instruction
+	HasLAMCAS     bool // support AMCAS[_DB].{B/H/W/D}
+	HasLAM_BH     bool // support AM{SWAP/ADD}[_DB].{B/H} instruction
+	HasDBAR_HINTS bool // supports finer-grained DBAR hints
+	_             CacheLinePad
 }
 
 var MIPS64X struct {
@@ -157,6 +158,16 @@ var RISCV64 struct {
 	HasFastMisaligned bool // Fast misaligned accesses
 	HasV              bool // Vector extension compatible with RVV 1.0
 	HasZbb            bool // Basic bit-manipulation extension
+	HasZbc            bool // Carryless multiplication extension
+	HasZvbb           bool // Vector Basic Bit-manipulation
+	HasZvbc           bool // Vector Carryless Multiplication
+	HasZvkg           bool // Vector GCM/GMAC
+	HasZvkned         bool // NIST Suite: Vector AES Block Cipher
+	HasZvknha         bool // NIST Suite: Vector SHA-2 Secure Hash
+	HasZvknhb         bool // NIST Suite: Vector SHA-2 Secure Hash
+	HasZvksed         bool // ShangMi Suite: SM4 Block Cipher
+	HasZvksh          bool // ShangMi Suite: SM3 Secure Hash
+	HasZvkt           bool // Vector Data-Independent Execution Latency
 	_                 CacheLinePad
 }
 

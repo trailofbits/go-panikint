@@ -213,7 +213,6 @@ func moveSliceNoCapNoScan(elemSize uintptr, old *byte, len int) (*byte, int, int
 
 func memmove(to *any, frm *any, length uintptr)
 func memclrNoHeapPointers(ptr unsafe.Pointer, n uintptr)
-func memclrNoHeapPointersPreemptible(ptr unsafe.Pointer, n uintptr)
 func memclrHasPointers(ptr unsafe.Pointer, n uintptr)
 
 func memequal(x, y unsafe.Pointer, size uintptr) bool
@@ -304,6 +303,7 @@ var armHasVFPv4 bool
 var arm64HasATOMICS bool
 var loong64HasLAMCAS bool
 var loong64HasLAM_BH bool
+var loong64HasDBAR_HINTS bool
 var loong64HasLSX bool
 var riscv64HasZbb bool
 

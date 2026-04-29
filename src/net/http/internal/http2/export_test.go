@@ -67,7 +67,7 @@ func (s *Server) TestServeConn(c net.Conn, opts *ServeConnOpts, newf func(*serve
 }
 
 func (sc *serverConn) TestFlowControlConsumed() (consumed int32) {
-	conf := configFromServer(sc.hs, sc.srv)
+	conf := configFromServer(sc.hs)
 	donec := make(chan struct{})
 	sc.sendServeMsg(func(sc *serverConn) {
 		defer close(donec)
@@ -170,7 +170,7 @@ func init() {
 	testHookOnPanicMu = new(sync.Mutex)
 }
 
-func SetTestHookOnPanic(t testing.TB, f func(sc *serverConn, panicVal interface{}) (rePanic bool)) {
+func SetTestHookOnPanic(t testing.TB, f func(sc *serverConn, panicVal any) (rePanic bool)) {
 	testHookOnPanicMu.Lock()
 	defer testHookOnPanicMu.Unlock()
 	old := testHookOnPanic
@@ -203,10 +203,6 @@ func EncodeHeaderRaw(t testing.TB, headers ...string) []byte {
 	return encodeHeaderRaw(t, headers...)
 }
 
-func NewPriorityWriteSchedulerRFC7540(cfg *PriorityWriteSchedulerConfig) WriteScheduler {
-	return newPriorityWriteSchedulerRFC7540(cfg)
-}
-
 func NewPriorityWriteSchedulerRFC9218() WriteScheduler {
 	return newPriorityWriteSchedulerRFC9218()
 }
@@ -224,10 +220,6 @@ func DisableGoroutineTracking(t testing.TB) {
 
 func InvalidHTTP1LookingFrameHeader() FrameHeader {
 	return invalidHTTP1LookingFrameHeader()
-}
-
-func NewNoDialClientConnPool() ClientConnPool {
-	return noDialClientConnPool{new(clientConnPool)}
 }
 
 func EncodeRequestHeaders(req *ClientRequest, addGzipHeader bool, peerMaxHeaderListSize uint64, headerf func(name, value string)) (httpcommon.EncodeHeadersResult, error) {

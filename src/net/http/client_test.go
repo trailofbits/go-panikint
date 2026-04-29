@@ -359,7 +359,7 @@ func TestPostRedirects(t *testing.T) {
 	want := strings.Join(wantSegments, "\n")
 	run(t, func(t *testing.T, mode testMode) {
 		testRedirectsByMethod(t, mode, "POST", postRedirectTests, want)
-	})
+	}, http3SkippedMode)
 }
 
 func TestDeleteRedirects(t *testing.T) {
@@ -398,7 +398,7 @@ func TestDeleteRedirects(t *testing.T) {
 	want := strings.Join(wantSegments, "\n")
 	run(t, func(t *testing.T, mode testMode) {
 		testRedirectsByMethod(t, mode, "DELETE", deleteRedirectTests, want)
-	})
+	}, http3SkippedMode)
 }
 
 func testRedirectsByMethod(t *testing.T, mode testMode, method string, table []redirectTest, want string) {
@@ -484,7 +484,11 @@ func testClientRedirectUseResponse(t *testing.T, mode testMode) {
 		if strings.Contains(r.URL.Path, "/other") {
 			io.WriteString(w, "wrong body")
 		} else {
-			w.Header().Set("Location", ts.URL+"/other")
+			scheme := "http"
+			if r.TLS != nil {
+				scheme = "https"
+			}
+			w.Header().Set("Location", fmt.Sprintf("%s://%s/other", scheme, r.Host))
 			w.WriteHeader(StatusFound)
 			io.WriteString(w, body)
 		}
@@ -1197,7 +1201,7 @@ func TestStripPasswordFromError(t *testing.T) {
 	}
 }
 
-func TestClientTimeout(t *testing.T) { run(t, testClientTimeout) }
+func TestClientTimeout(t *testing.T) { run(t, testClientTimeout, http3SkippedMode) }
 func testClientTimeout(t *testing.T, mode testMode) {
 	var (
 		mu           sync.Mutex
@@ -1342,7 +1346,7 @@ func testClientTimeout_Headers(t *testing.T, mode testMode) {
 
 // Issue 16094: if Client.Timeout is set but not hit, a Timeout error shouldn't be
 // returned.
-func TestClientTimeoutCancel(t *testing.T) { run(t, testClientTimeoutCancel) }
+func TestClientTimeoutCancel(t *testing.T) { run(t, testClientTimeoutCancel, http3SkippedMode) }
 func testClientTimeoutCancel(t *testing.T, mode testMode) {
 	testDone := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1507,7 +1511,9 @@ func TestClientRedirectResponseWithoutRequest(t *testing.T) {
 // Issue 35104: Since both URLs have the same host (localhost)
 // but different ports, sensitive headers like Cookie and Authorization
 // are preserved.
-func TestClientCopyHeadersOnRedirect(t *testing.T) { run(t, testClientCopyHeadersOnRedirect) }
+func TestClientCopyHeadersOnRedirect(t *testing.T) {
+	run(t, testClientCopyHeadersOnRedirect, http3SkippedMode)
+}
 func testClientCopyHeadersOnRedirect(t *testing.T, mode testMode) {
 	const (
 		ua   = "some-agent/1.2"
@@ -1573,7 +1579,7 @@ func testClientCopyHeadersOnRedirect(t *testing.T, mode testMode) {
 // Issue #70530: Once we strip a header on a redirect to a different host,
 // the header should stay stripped across any further redirects.
 func TestClientStripHeadersOnRepeatedRedirect(t *testing.T) {
-	run(t, testClientStripHeadersOnRepeatedRedirect)
+	run(t, testClientStripHeadersOnRepeatedRedirect, http3SkippedMode)
 }
 func testClientStripHeadersOnRepeatedRedirect(t *testing.T, mode testMode) {
 	var proto string

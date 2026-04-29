@@ -10,31 +10,8 @@ import (
 	"context"
 	"errors"
 	"net"
+	"slices"
 	"sync"
-)
-
-// ClientConnPool manages a pool of HTTP/2 client connections.
-type ClientConnPool interface {
-	// GetClientConn returns a specific HTTP/2 connection (usually
-	// a TLS-TCP connection) to an HTTP/2 server. On success, the
-	// returned ClientConn accounts for the upcoming RoundTrip
-	// call, so the caller should not omit it. If the caller needs
-	// to, ClientConn.RoundTrip can be called with a bogus
-	// new(ClientRequest) to release the stream reservation.
-	GetClientConn(req *ClientRequest, addr string) (*ClientConn, error)
-	MarkDead(*ClientConn)
-}
-
-// clientConnPoolIdleCloser is the interface implemented by ClientConnPool
-// implementations which can close their idle connections.
-type clientConnPoolIdleCloser interface {
-	ClientConnPool
-	closeIdleConnections()
-}
-
-var (
-	_ clientConnPoolIdleCloser = (*clientConnPool)(nil)
-	_ clientConnPoolIdleCloser = noDialClientConnPool{}
 )
 
 // TODO: use singleflight for dialing and addConnCalls?
@@ -211,10 +188,8 @@ func (c *addConnCall) run(t *Transport, key string, nc net.Conn) {
 
 // p.mu must be held
 func (p *clientConnPool) addConnLocked(key string, cc *ClientConn) {
-	for _, v := range p.conns[key] {
-		if v == cc {
-			return
-		}
+	if slices.Contains(p.conns[key], cc) {
+		return
 	}
 	if p.conns == nil {
 		p.conns = make(map[string][]*ClientConn)

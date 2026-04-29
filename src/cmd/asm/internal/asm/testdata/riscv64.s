@@ -140,6 +140,10 @@ start:
 
 	// 2.7: Memory Ordering Instructions
 	FENCE						// 0f00f00f
+	FENCE	W, W					// 0f001001
+	FENCE	I, O					// 0f004008
+	FENCE	IORW, IORW				// 0f00f00f
+	FENCE.TSO					// 0f003083
 
 	// 4.2: Integer Computational Instructions (RV64I)
 	ADDIW	$1, X5, X6				// 1b831200
@@ -173,6 +177,16 @@ start:
 	SD	X5, 4(X6)				// 23325300
 
 	// 7.1: CSR Instructions
+	CSRC	X5, VSTART				// 73b08200
+	CSRC	$2, VSTART				// 73708100
+	CSRCI	$2, VSTART				// 73708100
+	CSRR	CYCLE, X5				// f32200c0
+	CSRR	VCSR, X5				// f322f000
+	CSRR	VL, X5					// f32200c2
+	CSRR	VLENB, X5				// f32220c2
+	CSRR	VSTART, X5				// f3228000
+	CSRR	VXSAT, X5				// f3229000
+	CSRR	VXRM, X5				// f322a000
 	CSRRC	X0, CYCLE, X5				// f33200c0
 	CSRRC	X0, CYCLE, X0				// 733000c0
 	CSRRC	X10, CYCLE, X5				// f33205c0
@@ -189,11 +203,20 @@ start:
 	CSRRW	X10, CYCLE, X5				// f31205c0
 	CSRRW	$2, TIME, X5				// f35211c0
 	CSRRWI	$2, TIME, X5				// f35211c0
+	CSRS	X10, VSTART				// 73208500
+	CSRS	$2, VSTART				// 73608100
+	CSRSI	$2, VSTART				// 73608100
+	CSRW	X10, VSTART				// 73108500
+	CSRW	$2, VSTART				// 73508100
+	CSRWI	$2, VSTART				// 73508100
 
 	// 8.1: Base Counters and Timers (Zicntr)
 	RDCYCLE		X5				// f32200c0
 	RDTIME		X5				// f32210c0
 	RDINSTRET	X5				// f32220c0
+
+	// 10.1: Zihintpause Extension for Pause Hint
+	PAUSE						// 0f000001
 
 	// 12.3: Integer Conditional Operations (Zicond)
 	CZEROEQZ	X5, X6, X7			// b353530e
@@ -508,6 +531,14 @@ start:
 	RORW	$31, X13				// 9bd6f661 or 9bdff6019b961600b3e6df00
 	ORCB	X5, X6					// 13d37228
 	REV8	X7, X8					// 13d4836b
+
+	// 28.4.3: Carry-less multiplication (Zbc)
+	CLMUL	X5, X6, X7 				// b313530a
+	CLMUL	X5, X6	 				// 3313530a
+	CLMULH	X5, X6, X7 				// b333530a
+	CLMULH	X5, X6					// 3333530a
+	CLMULR	X5, X6, X7 				// b323530a
+	CLMULR	X5, X6	 				// 3323530a
 
 	// 28.4.4: Single-bit Instructions (Zbs)
 	BCLR	X23, X24, X25				// b31c7c49
