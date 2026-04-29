@@ -1,7 +1,8 @@
-# Note
-**⚠️ go-panikint is being integrated into [gosentry](https://github.com/kevin-valerio/gosentry), the Go tooling with a focus on security. It integrates features such as LibAFL fuzzing, go-panikint, and more. If you're planning on using go-panikint, you should take a look at [gosentry](https://github.com/kevin-valerio/gosentry) first.**
+# go-panikint has moved to [gosentry](https://github.com/kevin-valerio/gosentry), the Go toolchain with a focus on security. It integrates features such as LibAFL fuzzing, go-panikint, and more. 
 
-## Go-Panikint
+---------
+
+### Go-Panikint
 
 [![Go-panikint self-compile and test](https://github.com/trailofbits/go-panikint/actions/workflows/go.yml/badge.svg)](https://github.com/trailofbits/go-panikint/actions/workflows/go.yml)
 
