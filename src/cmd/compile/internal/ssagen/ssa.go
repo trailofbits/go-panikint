@@ -4567,6 +4567,8 @@ func (s *state) assignWhichMayOverlap(left ir.Node, right *ssa.Value, deref bool
 				return
 			}
 			if t.Size() == 0 {
+				len := s.constInt(types.Types[types.TINT], n)
+				s.boundsCheck(i, len, ssa.BoundsIndex, false)
 				return
 			}
 
@@ -5199,6 +5201,9 @@ func (s *state) call(n *ir.CallExpr, k callKind, returnResultAddr bool, deferExt
 			result = s.resultAddrOfCall(call, 0, fp.Type)
 		} else {
 			result = s.newValue1I(ssa.OpSelectN, fp.Type, 0, call)
+		}
+		if n.Reshape {
+			result = s.newValue1(ssa.OpCopy, n.Type(), result)
 		}
 	}
 

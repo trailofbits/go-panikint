@@ -100,6 +100,11 @@ type reader struct {
 
 	dict *readerDict
 
+	// funcLitGen is a counter for closure names.
+	funcLitGen int
+	// rangeLitGen is a counter for range func closure names.
+	rangeLitGen int
+
 	// TODO(mdempsky): The state below is all specific to reading
 	// function bodies. It probably makes sense to split it out
 	// separately so that it doesn't take up space in every reader
@@ -905,6 +910,9 @@ func (dict *readerDict) mangle(sym *types.Sym) *types.Sym {
 		j = len(dict.targs) // consume all type arguments
 	}
 
+	// put type arguments inside parenthesis; (*T)[int] -> (*T[int])
+	n, ok := strings.CutSuffix(n, ")")
+
 	// type arguments, if any
 	buf.WriteString(n)
 	if j > 0 {
@@ -920,6 +928,10 @@ func (dict *readerDict) mangle(sym *types.Sym) *types.Sym {
 			buf.WriteString(dict.targs[i].LinkString())
 		}
 		buf.WriteByte(']')
+	}
+
+	if ok {
+		buf.WriteString(")")
 	}
 
 	buf.WriteString(vsuff)
@@ -982,19 +994,8 @@ func Shapify(targ *types.Type, basic bool) *types.Type {
 	// types, and discarding struct field names and tags. However, we'll
 	// need to start tracking how type parameters are actually used to
 	// implement some of these optimizations.
-	pointerShaping := basic && targ.IsPtr() && !targ.Elem().NotInHeap()
-	// The exception is when the type parameter is a pointer to a type
-	// which `Type.HasShape()` returns true, but `Type.IsShape()` returns
-	// false, like `*[]go.shape.T`. This is because the type parameter is
-	// used to instantiate a generic function inside another generic function.
-	// In this case, we want to keep the targ as-is, otherwise, we may lose the
-	// original type after `*[]go.shape.T` is shapified to `*go.shape.uint8`.
-	// See issue #54535, #71184.
-	if pointerShaping && !targ.Elem().IsShape() && targ.Elem().HasShape() {
-		return targ
-	}
 	under := targ.Underlying()
-	if pointerShaping {
+	if basic && targ.IsPtr() && !targ.Elem().NotInHeap() {
 		under = types.NewPtr(types.Types[types.TUINT8])
 	}
 
@@ -2566,6 +2567,11 @@ func (r *reader) expr() (res ir.Node) {
 		}
 
 		x.SetType(typ)
+
+		if call, ok := x.(*ir.CallExpr); ok {
+			call.Reshape = true
+		}
+
 		return x
 
 	case exprConvert:
@@ -3306,8 +3312,17 @@ func (r *reader) inlClosureFunc(origPos src.XPos, sig *types.Type, why ir.Op) *i
 		curfn = r.curfn
 	}
 
+	var gen int
+	if why == ir.ORANGE {
+		r.rangeLitGen++
+		gen = r.rangeLitGen
+	} else {
+		r.funcLitGen++
+		gen = r.funcLitGen
+	}
+
 	// TODO(mdempsky): Remove hard-coding of typecheck.Target.
-	return ir.NewClosureFunc(origPos, r.inlPos(origPos), why, sig, curfn, typecheck.Target)
+	return ir.NewClosureFunc(origPos, r.inlPos(origPos), why, sig, curfn, typecheck.Target, gen)
 }
 
 func (r *reader) exprList() []ir.Node {
@@ -3796,6 +3811,7 @@ func unifiedInlineCall(callerfn *ir.Func, call *ir.CallExpr, fn *ir.Func, inlInd
 	res.SetInit(init)
 	res.SetType(call.Type())
 	res.SetTypecheck(1)
+	res.Reshape = call.Reshape
 
 	// Inlining shouldn't add any functions to todoBodies.
 	assert(len(todoBodies) == 0)

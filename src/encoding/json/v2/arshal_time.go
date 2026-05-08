@@ -54,7 +54,11 @@ func makeTimeArshaler(fncs *arshaler, t reflect.Type) *arshaler {
 				return marshalNano(enc, va, mo)
 			} else {
 				// TODO(https://go.dev/issue/71631): Decide on default duration representation.
-				return newMarshalErrorBefore(enc, t, errors.New("no default representation; specify an explicit format"))
+				var workaround string
+				if internal.ExpJSONFormat {
+					workaround = "; specify an explicit format"
+				}
+				return newMarshalErrorBefore(enc, t, errors.New("no default representation"+workaround))
 			}
 
 			m.td, _ = reflect.TypeAssert[time.Duration](va.Value)
@@ -79,7 +83,11 @@ func makeTimeArshaler(fncs *arshaler, t reflect.Type) *arshaler {
 				return unmarshalNano(dec, va, uo)
 			} else {
 				// TODO(https://go.dev/issue/71631): Decide on default duration representation.
-				return newUnmarshalErrorBeforeWithSkipping(dec, t, errors.New("no default representation; specify an explicit format"))
+				var workaround string
+				if internal.ExpJSONFormat {
+					workaround = "; specify an explicit format"
+				}
+				return newUnmarshalErrorBeforeWithSkipping(dec, t, errors.New("no default representation"+workaround))
 			}
 
 			stringify := !u.isNumeric() || xd.Tokens.Last.NeedObjectName() || uo.Flags.Get(jsonflags.StringifyNumbers)
@@ -539,7 +547,7 @@ func parseDurationISO8601(b []byte) (time.Duration, error) {
 		}
 
 		// Parse the number.
-		// A fraction allowed for the accurate units in the last part.
+		// A fraction is allowed for the accurate units in the last part.
 		whole, frac, ok := cutBytes(number, '.', ',')
 		if ok {
 			sawFrac = true

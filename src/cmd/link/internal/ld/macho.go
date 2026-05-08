@@ -880,7 +880,7 @@ func asmbMacho(ctxt *Link) {
 		if int64(len(data)) != codesigOff {
 			panic("wrong size")
 		}
-		codesign.Sign(ldr.Data(cs), bytes.NewReader(data), "a.out", codesigOff, int64(mstext.fileoffset), int64(mstext.filesize), ctxt.IsExe() || ctxt.IsPIE())
+		codesign.Sign(ldr.Data(cs), bytes.NewBuffer(data), "a.out", codesigOff, int64(mstext.fileoffset), int64(mstext.filesize), ctxt.IsExe() || ctxt.IsPIE())
 		ctxt.Out.SeekSet(codesigOff)
 		ctxt.Out.Write(ldr.Data(cs))
 	}
@@ -1046,7 +1046,7 @@ func AddMachoSym(ldr *loader.Loader, s loader.Sym) {
 // When dynamically linking, all non-local variables and plugin-exported
 // symbols need to be exported.
 func machoShouldExport(ctxt *Link, ldr *loader.Loader, s loader.Sym) bool {
-	if !ctxt.DynlinkingGo() || ldr.AttrLocal(s) {
+	if !ctxt.DynlinkingGo() || ldr.AttrLocal(s) || (ldr.IsContentHashed(s) && ldr.SymType(s).IsText()) {
 		return false
 	}
 	if ctxt.BuildMode == BuildModePlugin && strings.HasPrefix(ldr.SymExtname(s), objabi.PathToPrefix(*flagPluginPath)) {

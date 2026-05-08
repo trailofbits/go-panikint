@@ -86,7 +86,7 @@ func (s *state) reset() {
 // either a JSON object name or an index to a JSON array element
 // encoded as a base-10 integer value.
 // It is impossible to distinguish between an array index and an object name
-// (that happens to be an base-10 encoded integer) without also knowing
+// (that happens to be a base-10 encoded integer) without also knowing
 // the structure of the top-level JSON value that the pointer refers to.
 //
 // There is exactly one representation of a pointer to a particular value,
@@ -131,7 +131,7 @@ func (p Pointer) LastToken() string {
 
 // AppendToken appends a token to the end of p and returns the full pointer.
 func (p Pointer) AppendToken(tok string) Pointer {
-	return Pointer(appendEscapePointerName([]byte(p+"/"), tok))
+	return Pointer(appendEscapePointerName([]byte(p+"/"), []byte(tok)))
 }
 
 // TODO: Add Pointer.AppendTokens,
@@ -202,7 +202,7 @@ func (s state) appendStackPointer(b []byte, where int) []byte {
 	return b
 }
 
-func appendEscapePointerName[Bytes ~[]byte | ~string](b []byte, name Bytes) []byte {
+func appendEscapePointerName(b, name []byte) []byte {
 	for _, r := range string(name) {
 		// Per RFC 6901, section 3, escape '~' and '/' characters.
 		switch r {
@@ -475,7 +475,7 @@ func (e stateEntry) NeedObjectName() bool {
 	return e&(stateTypeMask|stateCountLSBMask) == stateTypeObject|stateCountEven
 }
 
-// needImplicitColon reports whether an colon should occur next,
+// needImplicitColon reports whether a colon should occur next,
 // which always occurs after JSON object names.
 func (e stateEntry) needImplicitColon() bool {
 	return e.needObjectValue()
@@ -487,7 +487,7 @@ func (e stateEntry) needObjectValue() bool {
 	return e&(stateTypeMask|stateCountLSBMask) == stateTypeObject|stateCountOdd
 }
 
-// needImplicitComma reports whether an comma should occur next,
+// needImplicitComma reports whether a comma should occur next,
 // which always occurs after a value in a JSON object or array
 // before the next value (or name).
 func (e stateEntry) needImplicitComma(next Kind) bool {
